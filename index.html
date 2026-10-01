@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Crate Rescue: Detroit</title>
+<meta name="description" content="A game about blind inventory: extra building materials hide in Detroit construction yards. Drones find them, an AI dispatcher suggests where they should go, and robot trucks deliver them before they're thrown away.">
+<meta name="theme-color" content="#1B2140">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Crate Rescue: Detroit">
+<meta property="og:description" content="Find the hidden crates, ask the AI where they should go, and save them before they hit the landfill.">
+<!-- After you put the site online, replace og-image.png below with its full address, e.g. https://your-site.netlify.app/og-image.png -->
+<meta property="og:image" content="og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<header class="hud">
+  <div class="brand"><span class="display">Crate Rescue</span><span class="where">DETROIT</span></div>
+  <div class="weeks"><span class="lbl" id="weeklabel">Week 1 of 12</span><div class="weekbar" id="weekbar"></div><div class="clock"><div id="clockfill"></div></div></div>
+  <div class="stats">
+    <div class="stat good"><b id="saved">0</b><span>Saved</span></div>
+    <div class="stat bad"><b id="wasted">0</b><span>Thrown out</span></div>
+    <div class="stat"><b id="refused">0</b><span>Refused</span></div>
+  </div>
+  <div class="ctl"><button id="pause" class="chip">Pause</button><button id="restart" class="chip">Restart</button></div>
+</header>
+
+<main class="game">
+  <section class="card boardcard">
+    <div class="boardwrap" id="boardwrap">
+      <canvas id="board" role="img" aria-label="Game board: a map of central Detroit with six construction yards full of crates, the Reuse Warehouse, a scanning drone, a robot truck and road closures"></canvas>
+      <div class="overlay" id="startcard">
+        <div class="panelcard">
+          <h2>Crate Rescue: Detroit</h2>
+          <p class="sub">Builders in Detroit buy more materials than they need. Help get the extra crates to builders who need them, before they&rsquo;re thrown away.</p>
+          <ol class="steps">
+            <li>
+              <svg viewBox="0 0 58 48" aria-hidden="true"><rect x="4" y="10" width="22" height="22" rx="4" fill="#6B7280"/><text x="15" y="27" font-family="Lilita One, Arial Black" font-size="17" fill="#fff" text-anchor="middle">?</text><rect x="30" y="18" width="22" height="22" rx="4" fill="#6B7280"/><text x="41" y="35" font-family="Lilita One, Arial Black" font-size="17" fill="#fff" text-anchor="middle">?</text></svg>
+              <div><b>The problem: hidden crates</b><p>The extra crates sit in builders&rsquo; yards, and nobody keeps track of them. That&rsquo;s called blind inventory. After 4 weeks they get thrown away.</p></div>
+            </li>
+            <li>
+              <svg viewBox="0 0 58 48" aria-hidden="true"><path d="M29 26 L10 46 L48 46 Z" fill="#7B61FF" opacity=".2"/><g stroke="#7B61FF" stroke-width="3"><line x1="17" y1="11" x2="41" y2="29"/><line x1="41" y1="11" x2="17" y2="29"/></g><g fill="none" stroke="#7B61FF" stroke-width="2" opacity=".6"><circle cx="17" cy="11" r="7"/><circle cx="41" cy="11" r="7"/><circle cx="17" cy="29" r="7"/><circle cx="41" cy="29" r="7"/></g><rect x="22" y="13" width="14" height="14" rx="4" fill="#7B61FF"/><circle cx="29" cy="20" r="3" fill="#fff"/></svg>
+              <div><b>The eyes: drones</b><p>A drone flies over each yard and scans it, so the hidden crates show up for everyone.</p></div>
+            </li>
+            <li>
+              <svg viewBox="0 0 58 48" aria-hidden="true"><rect x="3" y="8" width="22" height="20" rx="6" fill="#7B61FF"/><circle cx="10" cy="17" r="3" fill="#fff"/><circle cx="18" cy="17" r="3" fill="#fff"/><line x1="14" y1="8" x2="14" y2="2" stroke="#7B61FF" stroke-width="2.5"/><circle cx="14" cy="2" r="2.5" fill="#FFB703"/><rect x="28" y="22" width="18" height="14" rx="3" fill="#FF8C42"/><rect x="45" y="24" width="10" height="12" rx="3" fill="#C8641F"/><rect x="30" y="16" width="6" height="6" fill="#F4B942"/><rect x="37" y="16" width="6" height="6" fill="#EF6F6C"/><circle cx="33" cy="39" r="4" fill="#1D2433"/><circle cx="50" cy="39" r="4" fill="#1D2433"/></svg>
+              <div><b>The brain: an AI dispatcher</b><p>The AI sees what the drone found and suggests where each crate should go. Robot trucks deliver them. The city checks every trip, and the AI learns from mistakes.</p></div>
+            </li>
+          </ol>
+          <button class="btn go wide" id="play">Play</button>
+        </div>
+      </div>
+      <div class="overlay" id="endcard" hidden>
+        <div class="panelcard">
+          <h2>Season complete!</h2>
+          <div id="stars" aria-label="Stars earned"></div>
+          <p id="endtext"></p>
+          <p id="endnote"></p>
+          <button class="btn go wide" id="again">Play again</button>
+        </div>
+      </div>
+    </div>
+    <div class="mbar"><p id="mbubble"></p><div class="mbtns"><button class="btn" id="mask">Ask the AI</button><button class="btn go" id="mgo" hidden>Go!</button><button class="btn plain" id="mnope" hidden>Not now</button></div></div>
+    <p class="hint" id="hint" aria-live="polite"></p>
+    <div class="legend">
+      <span><i class="cr" style="background:#8FA0B8"></i>Steel</span>
+      <span><i class="cr" style="background:#EF6F6C"></i>Brick</span>
+      <span><i class="cr" style="background:#F4B942"></i>Wood</span>
+      <span><i class="cr" style="background:#6B7280">?</i>Hidden, not scanned yet</span>
+      <span><i class="cr" style="background:#F4B942;outline:2px solid #E63946"></i>Thrown out next week</span>
+      <span><i class="cr" style="background:#FF7A00;border-radius:2px 2px 6px 6px"></i>Road closed</span>
+    </div>
+    <details class="kbd">
+      <summary>Move crates with menus instead of tapping</summary>
+      <div class="row">
+        <label>From<select id="kfrom"></select></label>
+        <label>To<select id="kto"></select></label>
+        <button class="btn plain" id="ksend">Send</button>
+      </div>
+    </details>
+  </section>
+
+  <aside class="side">
+    <div class="card ai">
+      <div class="aihead">
+        <svg viewBox="0 0 56 56" aria-hidden="true"><line x1="28" y1="10" x2="28" y2="3" stroke="#7B61FF" stroke-width="3"/><circle cx="28" cy="4" r="3.5" fill="#FFB703"/><rect x="6" y="10" width="44" height="36" rx="11" fill="#7B61FF"/><rect x="12" y="18" width="32" height="18" rx="8" fill="#1D2433"/><circle cx="21" cy="27" r="4" fill="#4ADE80"/><circle cx="35" cy="27" r="4" fill="#4ADE80"/><rect x="2" y="22" width="5" height="12" rx="2" fill="#5B43E0"/><rect x="49" y="22" width="5" height="12" rx="2" fill="#5B43E0"/></svg>
+        <div><b>AI Dispatcher</b><span>Reads what the drone scanned and suggests one truck trip at a time.</span></div>
+      </div>
+      <p class="bubble" id="bubble" aria-live="polite"></p>
+      <div id="askbtns"><button class="btn wide" id="ask">Ask the AI</button></div>
+      <div id="gobtns" hidden><button class="btn go" id="go">Go!</button><button class="btn plain" id="nope">Not now</button></div>
+      <label class="auto"><input type="checkbox" id="autopilot"><span class="switch"></span>Autopilot: let the AI run it</label>
+    </div>
+    <div class="card brain">
+      <h3>What the AI has learned</h3>
+      <ul id="lessons"></ul>
+    </div>
+    <div class="card logcard">
+      <h3>What happened</h3>
+      <ol id="log"></ol>
+    </div>
+  </aside>
+</main>
+
+<section class="grownups">
+  <details class="card">
+    <summary>For grown-ups: what this game is about</summary>
+    <div class="body">
+      <h4>The problem</h4>
+      <p>Construction sites routinely order more material than they install. The surplus sits in their yards untracked, and much of it is eventually thrown away. This untracked surplus is blind inventory. In the game, crates start hidden and go to the landfill after four weeks.</p>
+      <h4>The proposed fix</h4>
+      <p>Autonomous drones measure the yards, and a language-model dispatcher reads that data and proposes where each crate should go. Autonomous trucks then carry the crates to the builder who needs them, or to a shared reuse warehouse that passes a few crates a week on to neighborhood builders. In this game the dispatcher is built in: a rule of thumb that stands in for the model&rsquo;s proposals. It matches visible crates to the nearest builder who needs them, and saves old crates in the warehouse.</p>
+      <h4>Why the city can say no</h4>
+      <p>The dispatcher judges distance in a straight line, as it would from a map, but trucks have to follow real streets, including a real road closure. So a proposal can fail. The failures are shown where they happen: <em>too far</em> (the truck runs out of delivery time), <em>too heavy</em> (more than six crates), <em>not needed</em> (the builder didn&rsquo;t order that), <em>full</em> (the warehouse has no room), and <em>can&rsquo;t see them</em> (unscanned crates can&rsquo;t be dispatched). When a trip is refused for distance, the dispatcher records the lesson and stops proposing it.</p>
+      <h4>The score</h4>
+      <p>Saved counts crates delivered to builders plus crates stored at the warehouse. Thrown out counts crates that aged out. Refused counts moves the city rejected. The end screen compares your season with doing nothing, where every extra crate is lost.</p>
+      <h4>What&rsquo;s real</h4>
+      <ul>
+        <li>The six sites are real Detroit projects under way in 2026: the <a href="https://www.henryford.com/news/2026/05/henry-ford-hospital-construction-milestone" target="_blank" rel="noopener">Henry Ford Hospital tower</a>, <a href="https://development-tracker.outliermedia.org/projects/the-claire-apartments" target="_blank" rel="noopener">The Claire</a>, <a href="https://development-tracker.outliermedia.org/projects/wigle-midtown-west" target="_blank" rel="noopener">Midtown West</a>, the <a href="https://www.axios.com/local/detroit/2026/03/16/ums-detroit-innovation-center-advances-toward-2027-opening" target="_blank" rel="noopener">U-M Center for Innovation</a>, the <a href="https://development-tracker.outliermedia.org/projects/jw-marriott-hotel-at-water-square" target="_blank" rel="noopener">JW Marriott at Water Square</a> and <a href="https://www.hok.com/news/2026-07/detroit-city-fc-breaks-ground-on-hok-designed-alumnifi-field/" target="_blank" rel="noopener">AlumniFi Field</a>.</li>
+        <li>The Reuse Warehouse stands for the <a href="https://planetdetroit.org/2025/02/architectural-salvage-warehouse-detroit/" target="_blank" rel="noopener">Architectural Salvage Warehouse of Detroit</a>, a nonprofit that deconstructs buildings and resells what it saves.</li>
+        <li>The street map is a simplified trace of central Detroit. The closure near AlumniFi Field is MDOT&rsquo;s <a href="https://www.wxyz.com/news/breaking-down-the-biggest-construction-projects-in-metro-detroit-for-2026" target="_blank" rel="noopener">2026 Michigan Ave rebuild in Corktown</a>. Other road work is made up and changes each week.</li>
+        <li>Crate counts, the six-crate truck, the seven-kilometer delivery limit and the four-week rule are simplified for play.</li>
+      </ul>
+    </div>
+  </details>
+</section>
+<footer class="sitefoot"><p>Crate Rescue: Detroit is a design study of blind inventory in construction, made for ARC327R. The sites and the Michigan Ave rebuild are real; crate counts and rules are simplified for play.</p></footer>
+<noscript><p style="max-width:640px;margin:0 auto 30px;padding:0 16px">Crate Rescue needs JavaScript turned on to play.</p></noscript>
+<script src="js/detroit-map.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>
