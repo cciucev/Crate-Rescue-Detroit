@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Crate Rescue: Detroit</title>
+<meta name="description" content="A game about blind inventory: extra building materials hide in Detroit construction yards. Drones find them, an AI dispatcher suggests where they should go, and robot trucks deliver them before they're thrown away.">
+<meta name="theme-color" content="#1B2140">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Crate Rescue: Detroit">
+<meta property="og:description" content="Find the hidden crates, ask the AI where they should go, and save them before they hit the landfill.">
+<!-- After you put the site online, replace og-image.png below with its full address, e.g. https://your-site.netlify.app/og-image.png -->
+<meta property="og:image" content="og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Crect%20x%3D%224%22%20y%3D%224%22%20width%3D%2256%22%20height%3D%2256%22%20rx%3D%2214%22%20fill%3D%22%231B2140%22/%3E%3Crect%20x%3D%2214%22%20y%3D%2216%22%20width%3D%2236%22%20height%3D%2234%22%20rx%3D%226%22%20fill%3D%22%23F4B942%22/%3E%3Crect%20x%3D%2214%22%20y%3D%2240%22%20width%3D%2236%22%20height%3D%2210%22%20rx%3D%223%22%20fill%3D%22%23BF8318%22/%3E%3Cpath%20d%3D%22M20%2022%20L44%2038%22%20stroke%3D%22%23BF8318%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22/%3E%3Ccircle%20cx%3D%2247%22%20cy%3D%2217%22%20r%3D%228%22%20fill%3D%22%237B61FF%22/%3E%3Ccircle%20cx%3D%2247%22%20cy%3D%2217%22%20r%3D%223%22%20fill%3D%22%23fff%22/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<style>
+/* Crate Rescue: Detroit */
+:root{
+  --bg:#E6F3FF; --panel:#FFFFFF; --panel2:#F3F8FF; --ink:#1D2433; --ink2:#4B5563; --line:#D2E2F2;
+  --hud:#1B2140; --hudtext:#FFFFFF; --hudmuted:#AEB8DA;
+  --ai:#7B61FF; --ai2:#5B43E0; --good:#12A150; --good2:#0C7D3D; --bad:#E63946; --gold:#FFB703; --truck:#FF8C42;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E1328; --panel:#1A2140; --panel2:#222A4D; --ink:#EEF2FF; --ink2:#A9B4D0; --line:#2C355C;
+    --hud:#070B1C; --hudmuted:#8E98BC;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E1328; --panel:#1A2140; --panel2:#222A4D; --ink:#EEF2FF; --ink2:#A9B4D0; --line:#2C355C;
+  --hud:#070B1C; --hudmuted:#8E98BC;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:700 15.5px/1.45 Nunito,"Trebuchet MS",Arial,sans-serif;-webkit-font-smoothing:antialiased}
+[hidden]{display:none !important}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.display{font-family:"Lilita One","Arial Black",Impact,sans-serif;font-weight:400;letter-spacing:.01em}
+
+.hud{position:sticky;top:0;z-index:5;background:var(--hud);color:var(--hudtext);padding:10px 18px;display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:10px 22px;align-items:center;box-shadow:0 4px 0 rgba(0,0,0,.18)}
+.brand{display:flex;align-items:baseline;gap:8px}
+.brand .display{font-size:26px;line-height:1}
+.brand .where{font-size:13px;color:var(--gold);font-weight:900}
+.weeks{min-width:0}
+.weeks .lbl{font-size:12.5px;color:var(--hudmuted);font-weight:800;display:block;margin-bottom:4px}
+.weekbar{display:grid;grid-template-columns:repeat(12,1fr);gap:3px}
+.weekbar i{height:9px;border-radius:3px;background:rgba(255,255,255,.14)}
+.weekbar i.done{background:var(--ai)} .weekbar i.now{background:var(--gold)}
+.clock{height:4px;border-radius:2px;background:rgba(255,255,255,.12);margin-top:4px;overflow:hidden}
+#clockfill{height:100%;width:0;background:var(--gold)}
+.stats{display:flex;gap:8px}
+.stat{background:rgba(255,255,255,.08);border-radius:10px;padding:5px 12px;text-align:center;min-width:74px}
+.stat b{display:block;font-family:"Lilita One","Arial Black",sans-serif;font-weight:400;font-size:24px;line-height:1.05}
+.stat span{font-size:11px;color:var(--hudmuted);font-weight:800}
+.stat.good b{color:#4ADE80} .stat.bad b{color:#FF7A85}
+.ctl{display:flex;gap:6px}
+.chip{background:rgba(255,255,255,.1);border:0;border-radius:10px;padding:8px 12px;font-weight:900;font-size:13px;color:var(--hudtext)}
+.chip:disabled{opacity:.4;cursor:default}
+
+.game{max-width:1260px;margin:0 auto;padding:16px 16px 10px;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;align-items:start}
+.card{background:var(--panel);border-radius:16px;box-shadow:0 3px 0 var(--line);border:2px solid var(--line)}
+.boardcard{overflow:hidden}
+.boardwrap{position:relative}
+#board{display:block;width:100%;touch-action:manipulation;cursor:pointer}
+.mbar{display:none}
+.hint{margin:0;padding:10px 14px;font-size:14.5px;border-top:2px solid var(--line);min-height:44px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;padding:0 14px 12px;font-size:12.5px;color:var(--ink2)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.cr{width:14px;height:14px;border-radius:3px;display:inline-grid;place-items:center;font:400 11px "Lilita One",sans-serif;color:#fff}
+.kbd{padding:0 14px 12px;font-size:13px}
+.kbd summary{color:var(--ink2);cursor:pointer}
+.kbd .row{display:flex;flex-wrap:wrap;gap:8px;align-items:end;margin-top:8px}
+.kbd label{display:grid;gap:2px;font-size:12px;color:var(--ink2)}
+.kbd select{padding:6px 8px;border-radius:8px;border:2px solid var(--line);background:var(--panel2);color:var(--ink);font:inherit}
+
+.overlay{position:absolute;inset:0;display:grid;place-items:center;background:rgba(27,33,64,.62);padding:14px}
+.panelcard{background:var(--panel);color:var(--ink);border-radius:20px;border:3px solid var(--hud);box-shadow:0 8px 0 rgba(0,0,0,.25);padding:22px 22px 20px;width:min(560px,100%);max-height:100%;overflow:auto}
+.panelcard h2{margin:0 0 4px;font-family:"Lilita One","Arial Black",sans-serif;font-weight:400;font-size:30px;line-height:1.05}
+.panelcard .sub{margin:0 0 14px;color:var(--ink2)}
+.steps{list-style:none;margin:0 0 16px;padding:0;display:grid;gap:10px}
+.steps li{display:grid;grid-template-columns:58px 1fr;gap:12px;align-items:center;background:var(--panel2);border-radius:14px;padding:10px 12px}
+.steps svg{width:58px;height:48px}
+.steps b{display:block;font-family:"Lilita One","Arial Black",sans-serif;font-weight:400;font-size:18px;line-height:1.1}
+.steps p{margin:2px 0 0;font-size:14px;color:var(--ink2)}
+.btn{border:0;border-radius:14px;padding:12px 18px;font-family:"Lilita One","Arial Black",sans-serif;font-size:20px;line-height:1;color:#fff;background:var(--ai);box-shadow:0 5px 0 var(--ai2);transition:transform .06s,box-shadow .06s}
+.btn:active{transform:translateY(4px);box-shadow:0 1px 0 var(--ai2)}
+.btn.go{background:var(--good);box-shadow:0 5px 0 var(--good2)}
+.btn.go:active{box-shadow:0 1px 0 var(--good2)}
+.btn.wide{width:100%}
+.btn.plain{background:var(--panel2);color:var(--ink);box-shadow:0 5px 0 var(--line);font-size:17px}
+#stars{font-size:46px;letter-spacing:6px;margin:4px 0 8px;line-height:1}
+.star{color:var(--line)} .star.on{color:var(--gold);text-shadow:0 3px 0 #C98A00}
+#endnote{background:var(--panel2);border-radius:12px;padding:10px 12px;font-size:14px}
+
+.side{display:grid;gap:14px}
+.ai{padding:14px}
+.aihead{display:grid;grid-template-columns:56px 1fr;gap:10px;align-items:center;margin-bottom:10px}
+.aihead svg{width:56px;height:56px}
+.aihead b{font-family:"Lilita One","Arial Black",sans-serif;font-weight:400;font-size:21px;display:block;line-height:1.1}
+.aihead span{font-size:12.5px;color:var(--ink2)}
+.bubble{position:relative;margin:0 0 14px;background:var(--panel2);border:2px solid var(--ai);border-radius:14px;padding:11px 13px;font-size:15px;min-height:74px}
+.bubble::before{content:"";position:absolute;left:22px;top:-10px;border:9px solid transparent;border-top:0;border-bottom:10px solid var(--ai)}
+#gobtns{display:grid;grid-template-columns:1.4fr 1fr;gap:10px}
+.auto{display:flex;align-items:center;gap:10px;margin-top:14px;font-size:14px;cursor:pointer;user-select:none}
+.auto input{position:absolute;opacity:0;width:1px;height:1px}
+.switch{width:44px;height:26px;border-radius:13px;background:var(--line);position:relative;flex:none;transition:background .15s}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 2px 0 rgba(0,0,0,.2);transition:left .15s}
+.auto input:checked + .switch{background:var(--good)}
+.auto input:checked + .switch::after{left:21px}
+.auto input:focus-visible + .switch{outline:3px solid var(--gold);outline-offset:2px}
+.brain,.logcard{padding:12px 14px}
+.brain h3,.logcard h3{margin:0 0 6px;font-family:"Lilita One","Arial Black",sans-serif;font-weight:400;font-size:17px}
+#lessons{margin:0;padding-left:0;list-style:none;font-size:13.5px}
+#lessons li{padding:6px 0 6px 26px;position:relative;border-top:2px dashed var(--line)}
+#lessons li:first-child{border-top:0}
+#lessons li::before{content:"";position:absolute;left:2px;top:9px;width:14px;height:14px;border-radius:50%;background:var(--gold);box-shadow:inset 0 -3px 0 #C98A00}
+#lessons li.empty{color:var(--ink2);padding-left:0}
+#lessons li.empty::before{display:none}
+#log{list-style:none;margin:0;padding:0;max-height:260px;overflow:auto;font-size:13.5px}
+#log li{padding:7px 0 7px 10px;border-left:4px solid var(--line);margin-bottom:4px}
+#log li.good{border-left-color:var(--good)} #log li.bad{border-left-color:var(--bad)}
+#log li.sys{color:var(--ink2);font-size:12.5px;border-left-color:transparent}
+
+.grownups{max-width:1260px;margin:0 auto;padding:0 16px 40px}
+.grownups details{padding:0 18px}
+.grownups summary{padding:14px 0;font-family:"Lilita One","Arial Black",sans-serif;font-weight:400;font-size:19px;cursor:pointer}
+.grownups .body{padding:0 0 16px;max-width:80ch;font-weight:600}
+.grownups h4{margin:14px 0 4px;font-size:15px;font-weight:900}
+.grownups p{margin:0 0 8px}
+.grownups ul{margin:4px 0 10px;padding-left:18px}
+.grownups li{margin-bottom:4px}
+.grownups a{color:var(--ai)}
+
+@media (max-width:1000px){
+  .mbar{display:block;padding:10px 12px 12px;border-top:2px solid var(--line);background:var(--panel2)}
+  .mbar p{margin:0 0 9px;font-size:14px}
+  .mbtns{display:flex;gap:8px}
+  .mbtns .btn{flex:1;font-size:18px;padding:11px 10px}
+  .ai .bubble{display:none}
+  #askbtns,#gobtns{display:none !important}
+  .game{grid-template-columns:1fr}
+  .hud{grid-template-columns:auto 1fr;grid-template-areas:"brand ctl" "weeks weeks" "stats stats"}
+  .brand{grid-area:brand} .ctl{grid-area:ctl;justify-content:flex-end} .weeks{grid-area:weeks} .stats{grid-area:stats}
+  .stats{justify-content:stretch} .stat{flex:1}
+}
+@media (max-width:640px){
+  .hud{position:relative;box-shadow:none}
+  #startcard,#endcard{position:fixed;inset:0;z-index:30;background:rgba(27,33,64,.8)}
+  .weeks .lbl{margin-bottom:2px}
+  .stat{padding:3px 8px;border-radius:8px}
+  .hint{font-size:13.5px;padding:8px 12px;min-height:0}
+  .legend{gap:4px 12px;font-size:12px;padding:0 12px 10px}
+}
+@media (max-width:520px){
+  .hud{padding:8px 12px;gap:8px}
+  .brand .display{font-size:22px}
+  .stat b{font-size:20px}
+  .game{padding:10px 10px 8px}
+  .steps li{grid-template-columns:46px 1fr}
+  .steps svg{width:46px;height:40px}
+  .panelcard{padding:16px}
+  .panelcard h2{font-size:25px}
+}
+
+.sitefoot{max-width:1260px;margin:0 auto;padding:0 16px 34px;font-size:13px;color:var(--ink2);font-weight:700}
+.sitefoot p{margin:0}
+</style>
+</head>
+<body>
+<header class="hud">
+  <div class="brand"><span class="display">Crate Rescue</span><span class="where">DETROIT</span></div>
+  <div class="weeks"><span class="lbl" id="weeklabel">Week 1 of 12</span><div class="weekbar" id="weekbar"></div><div class="clock"><div id="clockfill"></div></div></div>
+  <div class="stats">
+    <div class="stat good"><b id="saved">0</b><span>Saved</span></div>
+    <div class="stat bad"><b id="wasted">0</b><span>Thrown out</span></div>
+    <div class="stat"><b id="refused">0</b><span>Refused</span></div>
+  </div>
+  <div class="ctl"><button id="pause" class="chip">Pause</button><button id="restart" class="chip">Restart</button></div>
+</header>
+
+<main class="game">
+  <section class="card boardcard">
+    <div class="boardwrap" id="boardwrap">
+      <canvas id="board" role="img" aria-label="Game board: a map of central Detroit with six construction yards full of crates, the Reuse Warehouse, a scanning drone, a robot truck and road closures"></canvas>
+      <div class="overlay" id="startcard">
+        <div class="panelcard">
+          <h2>Crate Rescue: Detroit</h2>
+          <p class="sub">Builders in Detroit buy more materials than they need. Help get the extra crates to builders who need them, before they&rsquo;re thrown away.</p>
+          <ol class="steps">
+            <li>
+              <svg viewBox="0 0 58 48" aria-hidden="true"><rect x="4" y="10" width="22" height="22" rx="4" fill="#6B7280"/><text x="15" y="27" font-family="Lilita One, Arial Black" font-size="17" fill="#fff" text-anchor="middle">?</text><rect x="30" y="18" width="22" height="22" rx="4" fill="#6B7280"/><text x="41" y="35" font-family="Lilita One, Arial Black" font-size="17" fill="#fff" text-anchor="middle">?</text></svg>
+              <div><b>The problem: hidden crates</b><p>The extra crates sit in builders&rsquo; yards, and nobody keeps track of them. That&rsquo;s called blind inventory. After 4 weeks they get thrown away.</p></div>
+            </li>
+            <li>
+              <svg viewBox="0 0 58 48" aria-hidden="true"><path d="M29 26 L10 46 L48 46 Z" fill="#7B61FF" opacity=".2"/><g stroke="#7B61FF" stroke-width="3"><line x1="17" y1="11" x2="41" y2="29"/><line x1="41" y1="11" x2="17" y2="29"/></g><g fill="none" stroke="#7B61FF" stroke-width="2" opacity=".6"><circle cx="17" cy="11" r="7"/><circle cx="41" cy="11" r="7"/><circle cx="17" cy="29" r="7"/><circle cx="41" cy="29" r="7"/></g><rect x="22" y="13" width="14" height="14" rx="4" fill="#7B61FF"/><circle cx="29" cy="20" r="3" fill="#fff"/></svg>
+              <div><b>The eyes: drones</b><p>A drone flies over each yard and scans it, so the hidden crates show up for everyone.</p></div>
+            </li>
+            <li>
+              <svg viewBox="0 0 58 48" aria-hidden="true"><rect x="3" y="8" width="22" height="20" rx="6" fill="#7B61FF"/><circle cx="10" cy="17" r="3" fill="#fff"/><circle cx="18" cy="17" r="3" fill="#fff"/><line x1="14" y1="8" x2="14" y2="2" stroke="#7B61FF" stroke-width="2.5"/><circle cx="14" cy="2" r="2.5" fill="#FFB703"/><rect x="28" y="22" width="18" height="14" rx="3" fill="#FF8C42"/><rect x="45" y="24" width="10" height="12" rx="3" fill="#C8641F"/><rect x="30" y="16" width="6" height="6" fill="#F4B942"/><rect x="37" y="16" width="6" height="6" fill="#EF6F6C"/><circle cx="33" cy="39" r="4" fill="#1D2433"/><circle cx="50" cy="39" r="4" fill="#1D2433"/></svg>
+              <div><b>The brain: an AI dispatcher</b><p>The AI sees what the drone found and suggests where each crate should go. Robot trucks deliver them. The city checks every trip, and the AI learns from mistakes.</p></div>
+            </li>
+          </ol>
+          <button class="btn go wide" id="play">Play</button>
+        </div>
+      </div>
+      <div class="overlay" id="endcard" hidden>
+        <div class="panelcard">
+          <h2>Season complete!</h2>
+          <div id="stars" aria-label="Stars earned"></div>
+          <p id="endtext"></p>
+          <p id="endnote"></p>
+          <button class="btn go wide" id="again">Play again</button>
+        </div>
+      </div>
+    </div>
+    <div class="mbar"><p id="mbubble"></p><div class="mbtns"><button class="btn" id="mask">Ask the AI</button><button class="btn go" id="mgo" hidden>Go!</button><button class="btn plain" id="mnope" hidden>Not now</button></div></div>
+    <p class="hint" id="hint" aria-live="polite"></p>
+    <div class="legend">
+      <span><i class="cr" style="background:#8FA0B8"></i>Steel</span>
+      <span><i class="cr" style="background:#EF6F6C"></i>Brick</span>
+      <span><i class="cr" style="background:#F4B942"></i>Wood</span>
+      <span><i class="cr" style="background:#6B7280">?</i>Hidden, not scanned yet</span>
+      <span><i class="cr" style="background:#F4B942;outline:2px solid #E63946"></i>Thrown out next week</span>
+      <span><i class="cr" style="background:#FF7A00;border-radius:2px 2px 6px 6px"></i>Road closed</span>
+    </div>
+    <details class="kbd">
+      <summary>Move crates with menus instead of tapping</summary>
+      <div class="row">
+        <label>From<select id="kfrom"></select></label>
+        <label>To<select id="kto"></select></label>
+        <button class="btn plain" id="ksend">Send</button>
+      </div>
+    </details>
+  </section>
+
+  <aside class="side">
+    <div class="card ai">
+      <div class="aihead">
+        <svg viewBox="0 0 56 56" aria-hidden="true"><line x1="28" y1="10" x2="28" y2="3" stroke="#7B61FF" stroke-width="3"/><circle cx="28" cy="4" r="3.5" fill="#FFB703"/><rect x="6" y="10" width="44" height="36" rx="11" fill="#7B61FF"/><rect x="12" y="18" width="32" height="18" rx="8" fill="#1D2433"/><circle cx="21" cy="27" r="4" fill="#4ADE80"/><circle cx="35" cy="27" r="4" fill="#4ADE80"/><rect x="2" y="22" width="5" height="12" rx="2" fill="#5B43E0"/><rect x="49" y="22" width="5" height="12" rx="2" fill="#5B43E0"/></svg>
+        <div><b>AI Dispatcher</b><span>Reads what the drone scanned and suggests one truck trip at a time.</span></div>
+      </div>
+      <p class="bubble" id="bubble" aria-live="polite"></p>
+      <div id="askbtns"><button class="btn wide" id="ask">Ask the AI</button></div>
+      <div id="gobtns" hidden><button class="btn go" id="go">Go!</button><button class="btn plain" id="nope">Not now</button></div>
+      <label class="auto"><input type="checkbox" id="autopilot"><span class="switch"></span>Autopilot: let the AI run it</label>
+    </div>
+    <div class="card brain">
+      <h3>What the AI has learned</h3>
+      <ul id="lessons"></ul>
+    </div>
+    <div class="card logcard">
+      <h3>What happened</h3>
+      <ol id="log"></ol>
+    </div>
+  </aside>
+</main>
+
+<section class="grownups">
+  <details class="card">
+    <summary>For grown-ups: what this game is about</summary>
+    <div class="body">
+      <h4>The problem</h4>
+      <p>Construction sites routinely order more material than they install. The surplus sits in their yards untracked, and much of it is eventually thrown away. This untracked surplus is blind inventory. In the game, crates start hidden and go to the landfill after four weeks.</p>
+      <h4>The proposed fix</h4>
+      <p>Autonomous drones measure the yards, and a language-model dispatcher reads that data and proposes where each crate should go. Autonomous trucks then carry the crates to the builder who needs them, or to a shared reuse warehouse that passes a few crates a week on to neighborhood builders. In this game the dispatcher is built in: a rule of thumb that stands in for the model&rsquo;s proposals. It matches visible crates to the nearest builder who needs them, and saves old crates in the warehouse.</p>
+      <h4>Why the city can say no</h4>
+      <p>The dispatcher judges distance in a straight line, as it would from a map, but trucks have to follow real streets, including a real road closure. So a proposal can fail. The failures are shown where they happen: <em>too far</em> (the truck runs out of delivery time), <em>too heavy</em> (more than six crates), <em>not needed</em> (the builder didn&rsquo;t order that), <em>full</em> (the warehouse has no room), and <em>can&rsquo;t see them</em> (unscanned crates can&rsquo;t be dispatched). When a trip is refused for distance, the dispatcher records the lesson and stops proposing it.</p>
+      <h4>The score</h4>
+      <p>Saved counts crates delivered to builders plus crates stored at the warehouse. Thrown out counts crates that aged out. Refused counts moves the city rejected. The end screen compares your season with doing nothing, where every extra crate is lost.</p>
+      <h4>What&rsquo;s real</h4>
+      <ul>
+        <li>The six sites are real Detroit projects under way in 2026: the <a href="https://www.henryford.com/news/2026/05/henry-ford-hospital-construction-milestone" target="_blank" rel="noopener">Henry Ford Hospital tower</a>, <a href="https://development-tracker.outliermedia.org/projects/the-claire-apartments" target="_blank" rel="noopener">The Claire</a>, <a href="https://development-tracker.outliermedia.org/projects/wigle-midtown-west" target="_blank" rel="noopener">Midtown West</a>, the <a href="https://www.axios.com/local/detroit/2026/03/16/ums-detroit-innovation-center-advances-toward-2027-opening" target="_blank" rel="noopener">U-M Center for Innovation</a>, the <a href="https://development-tracker.outliermedia.org/projects/jw-marriott-hotel-at-water-square" target="_blank" rel="noopener">JW Marriott at Water Square</a> and <a href="https://www.hok.com/news/2026-07/detroit-city-fc-breaks-ground-on-hok-designed-alumnifi-field/" target="_blank" rel="noopener">AlumniFi Field</a>.</li>
+        <li>The Reuse Warehouse stands for the <a href="https://planetdetroit.org/2025/02/architectural-salvage-warehouse-detroit/" target="_blank" rel="noopener">Architectural Salvage Warehouse of Detroit</a>, a nonprofit that deconstructs buildings and resells what it saves.</li>
+        <li>The street map is a simplified trace of central Detroit. The closure near AlumniFi Field is MDOT&rsquo;s <a href="https://www.wxyz.com/news/breaking-down-the-biggest-construction-projects-in-metro-detroit-for-2026" target="_blank" rel="noopener">2026 Michigan Ave rebuild in Corktown</a>. Other road work is made up and changes each week.</li>
+        <li>Crate counts, the six-crate truck, the seven-kilometer delivery limit and the four-week rule are simplified for play.</li>
+      </ul>
+    </div>
+  </details>
+</section>
+<footer class="sitefoot"><p>Crate Rescue: Detroit is a design study of blind inventory in construction, made for ARC327R. The sites and the Michigan Ave rebuild are real; crate counts and rules are simplified for play.</p></footer>
+<noscript><p style="max-width:640px;margin:0 auto 30px;padding:0 16px">Crate Rescue needs JavaScript turned on to play.</p></noscript>
+<script>
+/*
+  Crate Rescue: Detroit - street map and routing.
+  A simplified trace of central Detroit's main avenues, freeways and riverfront
+  (longitude, latitude), plus a street graph used to route the robot trucks.
+*/
+"use strict";
+const LON0 = -83.05, LAT0 = 42.36;
+const KX = 111.32 * Math.cos(LAT0 * Math.PI / 180), KY = 110.57;
+function toKm(lon, lat) { return [(lon - LON0) * KX, (lat - LAT0) * KY]; }
+
+// Simplified trace of Detroit's main arterials and freeways (lon, lat).
+const ROADS = [
+  { n: 'Woodward Ave', k: 'art', lab: 0.63, p: [[-83.0450,42.3288],[-83.0466,42.3317],[-83.0508,42.3363],[-83.0556,42.3428],[-83.0612,42.3500],[-83.0667,42.3570],[-83.0725,42.3637],[-83.0762,42.3690],[-83.0845,42.3805],[-83.0930,42.3930],[-83.1040,42.4050],[-83.1130,42.4165],[-83.1205,42.4310],[-83.1290,42.4459]] },
+  { n: 'Grand River Ave', k: 'art', lab: 0.55, p: [[-83.0493,42.3345],[-83.0536,42.3376],[-83.0620,42.3418],[-83.0740,42.3470],[-83.0880,42.3525],[-83.0985,42.3565],[-83.1150,42.3650],[-83.1350,42.3745],[-83.1560,42.3840],[-83.1800,42.3950],[-83.2050,42.4065],[-83.2300,42.4170],[-83.2550,42.4270],[-83.2876,42.4400]] },
+  { n: 'Michigan Ave', k: 'art', lab: 0.72, p: [[-83.0466,42.3317],[-83.0555,42.3314],[-83.0640,42.3312],[-83.0760,42.3309],[-83.0860,42.3303],[-83.1010,42.3297],[-83.1180,42.3290],[-83.1400,42.3255],[-83.1580,42.3222]] },
+  { n: 'Gratiot Ave', k: 'art', lab: 0.62, p: [[-83.0462,42.3328],[-83.0445,42.3372],[-83.0438,42.3412],[-83.0420,42.3445],[-83.0370,42.3520],[-83.0270,42.3620],[-83.0150,42.3730],[-83.0000,42.3870],[-82.9870,42.3990],[-82.9760,42.4120],[-82.9660,42.4270],[-82.9580,42.4470]] },
+  { n: 'E. Jefferson Ave', k: 'art', lab: 0.7, p: [[-83.0450,42.3288],[-83.0350,42.3322],[-83.0250,42.3360],[-83.0100,42.3420],[-82.9990,42.3468],[-82.9870,42.3520],[-82.9700,42.3575],[-82.9550,42.3615],[-82.9430,42.3650]] },
+  { n: 'W. Jefferson Ave', k: 'art', p: [[-83.0450,42.3288],[-83.0540,42.3268],[-83.0650,42.3232],[-83.0760,42.3165],[-83.0880,42.3075],[-83.1000,42.2985],[-83.1120,42.2895]] },
+  { n: 'E. Lafayette St', k: 'art', p: [[-83.0483,42.3335],[-83.0415,42.3358],[-83.0350,42.3380],[-83.0250,42.3405]] },
+  { n: 'Trumbull Ave', k: 'art', p: [[-83.0650,42.3232],[-83.0662,42.3272],[-83.0666,42.3311],[-83.0685,42.3400],[-83.0712,42.3462],[-83.0760,42.3550]] },
+  { n: 'Fort St', k: 'art', p: [[-83.0462,42.3302],[-83.0650,42.3275],[-83.0800,42.3210],[-83.0950,42.3130],[-83.1100,42.3050],[-83.1250,42.2965],[-83.1450,42.2850]] },
+  { n: 'Mack Ave', k: 'art', lab: 0.6, p: [[-83.0590,42.3478],[-83.0450,42.3495],[-83.0300,42.3530],[-83.0150,42.3590],[-83.0000,42.3650],[-82.9800,42.3740],[-82.9600,42.3830],[-82.9420,42.3915],[-82.9260,42.4000]] },
+  { n: 'Warren Ave', k: 'art', lab: 0.2, p: [[-83.2000,42.3448],[-83.1600,42.3470],[-83.1200,42.3490],[-83.0980,42.3515],[-83.0800,42.3542],[-83.0667,42.3570],[-83.0500,42.3625],[-83.0300,42.3685],[-83.0100,42.3752],[-82.9900,42.3830],[-82.9700,42.3910],[-82.9500,42.3995],[-82.9300,42.4080]] },
+  { n: 'W. Grand Blvd', k: 'art', p: [[-83.0930,42.3040],[-83.0985,42.3200],[-83.1010,42.3297],[-83.1020,42.3440],[-83.1020,42.3520],[-83.0985,42.3565],[-83.0930,42.3610],[-83.0884,42.3642],[-83.0858,42.3663],[-83.0815,42.3680],[-83.0775,42.3693],[-83.0762,42.3693]] },
+  { n: 'E. Grand Blvd', k: 'art', p: [[-83.0762,42.3693],[-83.0660,42.3745],[-83.0560,42.3790],[-83.0460,42.3800],[-83.0385,42.3790],[-83.0300,42.3745],[-83.0215,42.3665],[-83.0120,42.3580],[-83.0000,42.3530],[-82.9905,42.3508]] },
+  { n: '8 Mile Rd', k: 'art', lab: 0.25, p: [[-83.2876,42.4455],[-83.2000,42.4455],[-83.1290,42.4459],[-83.0850,42.4461],[-83.0500,42.4465],[-82.9580,42.4470]] },
+  { n: '7 Mile Rd', k: 'art', p: [[-83.2876,42.4310],[-83.1205,42.4310],[-83.0440,42.4320],[-82.9636,42.4330]] },
+  { n: 'McNichols Rd', k: 'art', lab: 0.2, p: [[-83.2876,42.4166],[-83.1600,42.4167],[-83.1130,42.4166],[-83.0600,42.4175],[-82.9900,42.4190],[-82.9600,42.4195]] },
+  { n: 'Fenkell Ave', k: 'art', p: [[-83.2876,42.4028],[-83.1335,42.4026],[-83.1050,42.4030]] },
+  { n: 'Joy Rd', k: 'art', p: [[-83.2876,42.3585],[-83.2140,42.3585],[-83.1600,42.3585],[-83.1275,42.3590]] },
+  { n: 'Plymouth Rd', k: 'art', p: [[-83.2876,42.3725],[-83.1875,42.3725],[-83.1500,42.3730],[-83.1350,42.3745]] },
+  { n: 'Livernois Ave', k: 'art', lab: 0.8, p: [[-83.1100,42.2950],[-83.1170,42.3290],[-83.1230,42.3500],[-83.1330,42.3700],[-83.1395,42.3880],[-83.1410,42.4166],[-83.1420,42.4455]] },
+  { n: 'Wyoming Ave', k: 'art', p: [[-83.1580,42.3222],[-83.1590,42.3470],[-83.1595,42.3730],[-83.1600,42.4167],[-83.1605,42.4455]] },
+  { n: 'Dexter Ave', k: 'art', p: [[-83.0985,42.3565],[-83.1100,42.3780],[-83.1210,42.3930],[-83.1320,42.4028]] },
+  { n: 'Van Dyke Ave', k: 'art', p: [[-82.9985,42.3480],[-83.0060,42.3900],[-83.0150,42.4200],[-83.0240,42.4462]] },
+  { n: 'Conner St', k: 'art', p: [[-82.9860,42.3525],[-82.9855,42.3990],[-82.9850,42.4190]] },
+  { n: 'Mound Rd', k: 'art', p: [[-83.0452,42.4050],[-83.0446,42.4300],[-83.0440,42.4465]] },
+  { n: 'E. Davison St', k: 'art', p: [[-83.0700,42.4040],[-83.0452,42.4050],[-82.9950,42.4062]] },
+  { n: 'I-75', k: 'fwy', lab: 0.5, p: [[-83.0440,42.3415],[-83.0470,42.3480],[-83.0520,42.3580],[-83.0570,42.3700],[-83.0600,42.3800],[-83.0640,42.3900],[-83.0700,42.4040],[-83.0740,42.4150],[-83.0800,42.4300],[-83.0850,42.4460]] },
+  { n: 'I-75', k: 'fwy', lab: 0.62, p: [[-83.0440,42.3415],[-83.0550,42.3408],[-83.0640,42.3395],[-83.0740,42.3350],[-83.0850,42.3270],[-83.0960,42.3190],[-83.1100,42.3090],[-83.1250,42.2980],[-83.1450,42.2850]] },
+  { n: 'I-375', k: 'fwy', p: [[-83.0440,42.3415],[-83.0415,42.3360],[-83.0400,42.3305]] },
+  { n: 'I-94', k: 'fwy', lab: 0.18, p: [[-83.1580,42.3485],[-83.1350,42.3512],[-83.1150,42.3545],[-83.0980,42.3600],[-83.0850,42.3630],[-83.0725,42.3637],[-83.0600,42.3680],[-83.0450,42.3725],[-83.0300,42.3780],[-83.0120,42.3850],[-82.9950,42.3930],[-82.9800,42.4010],[-82.9650,42.4100],[-82.9500,42.4220],[-82.9380,42.4380]] },
+  { n: 'I-96', k: 'fwy', lab: 0.55, p: [[-83.0850,42.3270],[-83.0920,42.3330],[-83.1050,42.3440],[-83.1250,42.3600],[-83.1500,42.3770],[-83.1800,42.3880],[-83.2150,42.3880],[-83.2500,42.3862],[-83.2876,42.3860]] },
+  { n: 'Lodge Fwy', k: 'fwy', lab: 0.62, p: [[-83.0520,42.3292],[-83.0580,42.3360],[-83.0640,42.3395],[-83.0700,42.3480],[-83.0719,42.3515],[-83.0760,42.3580],[-83.0815,42.3680],[-83.0900,42.3800],[-83.1050,42.3920],[-83.1165,42.4010],[-83.1400,42.4120],[-83.1650,42.4230],[-83.1850,42.4340],[-83.2000,42.4455]] },
+  { n: 'Davison Fwy', k: 'fwy', p: [[-83.1165,42.4010],[-83.0980,42.4040],[-83.0700,42.4040]] },
+  { n: 'Southfield Fwy', k: 'fwy', lab: 0.35, p: [[-83.2170,42.4455],[-83.2155,42.4166],[-83.2150,42.3880],[-83.2140,42.3585],[-83.2120,42.3300]] },
+];
+
+const SHORE_US = [[-82.9050,42.3575],[-82.9260,42.3585],[-82.9430,42.3585],[-82.9600,42.3520],[-82.9750,42.3470],[-82.9900,42.3420],[-83.0050,42.3370],[-83.0200,42.3330],[-83.0330,42.3300],[-83.0420,42.3275],[-83.0470,42.3262],[-83.0540,42.3238],[-83.0620,42.3200],[-83.0700,42.3150],[-83.0780,42.3100],[-83.0880,42.3030],[-83.0980,42.2950],[-83.1080,42.2870],[-83.1180,42.2790],[-83.1300,42.2700],[-83.1400,42.2600],[-83.1500,42.2450]];
+const SHORE_CA = [[-82.9050,42.3420],[-82.9300,42.3400],[-82.9600,42.3330],[-82.9900,42.3270],[-83.0200,42.3200],[-83.0400,42.3170],[-83.0550,42.3135],[-83.0700,42.3060],[-83.0850,42.2960],[-83.1000,42.2850],[-83.1100,42.2760],[-83.1200,42.2650],[-83.1300,42.2500],[-83.1400,42.2400]];
+
+const CANADA = SHORE_CA.concat([[-83.1400,42.2000],[-82.7000,42.2000],[-82.7000,42.3300]]);
+const BELLE_ISLE = [[-83.0000,42.3352],[-82.9920,42.3390],[-82.9800,42.3425],[-82.9650,42.3452],[-82.9570,42.3440],[-82.9620,42.3402],[-82.9760,42.3375],[-82.9900,42.3342],[-82.9990,42.3328]];
+const CITY = [[-83.2876,42.4455],[-83.1290,42.4459],[-82.9570,42.4470],[-82.9530,42.4340],[-82.9180,42.4300],[-82.9100,42.4180],[-82.9230,42.4000],[-82.9350,42.3830],[-82.9430,42.3585]]
+  .concat(SHORE_US.slice(3, 19))
+  .concat([[-83.1350,42.2900],[-83.1500,42.3020],[-83.1580,42.3222],[-83.1590,42.3440],[-83.2876,42.3440]]);
+
+function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+// ---------- road graph ----------
+function dijkstra(adj, N, src, blocked) {
+  const dist = new Float64Array(N).fill(Infinity), prev = new Int32Array(N).fill(-1);
+  const hn = [], hd = [];
+  const push = (n, d) => { hn.push(n); hd.push(d); let i = hn.length - 1; while (i > 0) { const p = (i - 1) >> 1; if (hd[p] <= hd[i]) break; [hn[p], hn[i]] = [hn[i], hn[p]]; [hd[p], hd[i]] = [hd[i], hd[p]]; i = p; } };
+  const pop = () => { const n = hn[0], d = hd[0]; const ln = hn.pop(), ld = hd.pop(); if (hn.length) { hn[0] = ln; hd[0] = ld; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < hn.length && hd[l] < hd[m]) m = l; if (r < hn.length && hd[r] < hd[m]) m = r; if (m === i) break; [hn[m], hn[i]] = [hn[i], hn[m]]; [hd[m], hd[i]] = [hd[i], hd[m]]; i = m; } } return [n, d]; };
+  dist[src] = 0; push(src, 0);
+  while (hn.length) {
+    const [u, d] = pop(); if (d > dist[u]) continue;
+    const a = adj[u];
+    for (let k = 0; k < a.length; k += 2) { const v = a[k]; if (blocked && blocked[v]) continue; const nd = d + a[k + 1]; if (nd < dist[v]) { dist[v] = nd; prev[v] = u; push(v, nd); } }
+  }
+  return { dist, prev };
+}
+
+function buildGraph(roads, anchors) {
+  const STEP = 0.12, JOIN = 0.13;
+  const X = [], Y = [], adj = [], roadOf = [];
+  let curRoad = -1;
+  const add = (x, y) => { X.push(x); Y.push(y); adj.push([]); roadOf.push(curRoad); return X.length - 1; };
+  const link = (a, b, w) => { adj[a].push(b, w); adj[b].push(a, w); };
+  const roadsKm = roads.map(r => ({ n: r.n, k: r.k, lab: r.lab, km: r.p.map(q => toKm(q[0], q[1])) }));
+  for (let ri = 0; ri < roadsKm.length; ri++) {
+    const r = roadsKm[ri]; curRoad = ri;
+    let prev = -1;
+    for (let i = 0; i < r.km.length - 1; i++) {
+      const [x1, y1] = r.km[i], [x2, y2] = r.km[i + 1];
+      const n = Math.max(1, Math.ceil(Math.hypot(x2 - x1, y2 - y1) / STEP));
+      for (let s = (i === 0 ? 0 : 1); s <= n; s++) {
+        const t = s / n, id = add(x1 + (x2 - x1) * t, y1 + (y2 - y1) * t);
+        if (prev >= 0) link(prev, id, Math.hypot(X[id] - X[prev], Y[id] - Y[prev]));
+        prev = id;
+      }
+    }
+  }
+  const N0 = X.length, grid = new Map(), key = (i, j) => i * 100003 + j;
+  for (let i = 0; i < N0; i++) { const k = key(Math.floor(X[i] / JOIN), Math.floor(Y[i] / JOIN)); if (!grid.has(k)) grid.set(k, []); grid.get(k).push(i); }
+  for (let i = 0; i < N0; i++) {
+    const ci = Math.floor(X[i] / JOIN), cj = Math.floor(Y[i] / JOIN);
+    for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) {
+      const arr = grid.get(key(ci + di, cj + dj)); if (!arr) continue;
+      for (const j of arr) { if (j <= i) continue; const d = Math.hypot(X[i] - X[j], Y[i] - Y[j]); if (d <= JOIN) link(i, j, d); }
+    }
+  }
+  // components: stitch any stray piece to the main network
+  const comp = new Int32Array(N0).fill(-1); let nc = 0; const sizes = [];
+  for (let i = 0; i < N0; i++) {
+    if (comp[i] >= 0) continue; const st = [i]; comp[i] = nc; let sz = 0;
+    while (st.length) { const u = st.pop(); sz++; const a = adj[u]; for (let k = 0; k < a.length; k += 2) { const v = a[k]; if (v < N0 && comp[v] < 0) { comp[v] = nc; st.push(v); } } }
+    sizes.push(sz); nc++;
+  }
+  const main = sizes.indexOf(Math.max(...sizes));
+  const stitches = [];
+  for (let c = 0; c < nc; c++) {
+    if (c === main) continue;
+    let best = Infinity, bi = -1, bj = -1;
+    for (let i = 0; i < N0; i++) { if (comp[i] !== c) continue; for (let j = 0; j < N0; j++) { if (comp[j] !== main) continue; const d = Math.hypot(X[i] - X[j], Y[i] - Y[j]); if (d < best) { best = d; bi = i; bj = j; } } }
+    link(bi, bj, best * 1.3); stitches.push([bi, bj, best]);
+    for (let i = 0; i < N0; i++) if (comp[i] === c) comp[i] = main;
+  }
+  curRoad = -1;
+  // anchor each site and hub to its nearest street node
+  const anchorNode = [], connectors = [];
+  for (let a = 0; a < anchors.length; a++) {
+    const [ax, ay] = anchors[a];
+    let best = Infinity, bi = -1;
+    for (let i = 0; i < N0; i++) { const d = Math.hypot(X[i] - ax, Y[i] - ay); if (d < best) { best = d; bi = i; } }
+    const id = add(ax, ay); link(id, bi, best * 1.25 + 0.02);
+    anchorNode.push(id); connectors.push([ax, ay, X[bi], Y[bi], best]);
+  }
+  const N = X.length, A = anchors.length;
+  const dist = [], path = [];
+  for (let a = 0; a < A; a++) {
+    const r = dijkstra(adj, N, anchorNode[a]);
+    dist.push([]); path.push([]);
+    for (let b = 0; b < A; b++) {
+      dist[a].push(r.dist[anchorNode[b]]);
+      const nodes = []; let u = anchorNode[b];
+      while (u >= 0) { nodes.push(u); if (u === anchorNode[a]) break; u = r.prev[u]; }
+      nodes.reverse();
+      const flat = new Float32Array(nodes.length * 2);
+      nodes.forEach((n, i) => { flat[2 * i] = X[n]; flat[2 * i + 1] = Y[n]; });
+      path[a].push(flat);
+    }
+  }
+  return { X, Y, N, N0, adj, roadOf, roadsKm, anchorNode, connectors, dist, path, stitches, components: nc };
+}
+</script>
+<script>
+/*
+  Crate Rescue: Detroit - the game.
+  Hidden surplus crates pile up in six real Detroit construction yards. A drone scans
+  them, a built-in AI dispatcher proposes truck trips, and the city refuses trips that
+  can't work. Tweak the numbers in the first lines below to change how the game plays.
+*/
+(function () {
+"use strict";
+const $ = id => document.getElementById(id);
+const WEEKS = 12, WEEK_SEC = 6, CAP = 6, TIME_KM = 7, TRASH_AGE = 4, NEED_WEEKS = 3, TRUCK_KMPS = 3.0, HOP_SEC = 1.6;
+const C = { land: '#CFE8B4', city: '#E4F3D3', canada: '#C2E2A6', water: '#5BC0EB', wave: '#86D3F3', park: '#A9DA8B',
+  road: '#FFFFFF', roadEdge: '#A9B9CA', fwy: '#FFEBB0', fwyEdge: '#E6C27A', lot: '#EDCF8E', lotEdge: '#B98F45',
+  ink: '#1D2433', white: '#FFFFFF', good: '#12A150', bad: '#E63946', truck: '#FF8C42', truckDark: '#C8641F',
+  drone: '#7B61FF', hidden: '#6B7280', ware: '#1C9C8D', cone: '#FF7A00', dump: '#8B8F98' };
+const MATS = [
+  { name: 'steel', color: '#8FA0B8', dark: '#5B6880' },
+  { name: 'brick', color: '#EF6F6C', dark: '#B24340' },
+  { name: 'wood', color: '#F4B942', dark: '#BF8318' },
+];
+const PL = [
+  { name: 'Henry Ford', full: 'Henry Ford Hospital tower', lon: -83.0858, lat: 42.3666, slots: 12, rate: 1.4, mix: [.5, .25, .25], needRate: .34, needMix: [.5, .4, .1] },
+  { name: 'The Claire', full: 'The Claire apartments', lon: -83.0846, lat: 42.3790, slots: 8, rate: .6, mix: [.1, .3, .6], needRate: .3, needMix: [.05, .35, .6] },
+  { name: 'Midtown West', full: 'Midtown West homes', lon: -83.0722, lat: 42.3514, slots: 12, rate: 1.3, mix: [.15, .25, .6], needRate: .16, needMix: [.2, .3, .5] },
+  { name: 'U-M Center', full: 'U-M Center for Innovation', lon: -83.0536, lat: 42.3377, slots: 12, rate: 1.0, mix: [.45, .35, .2], needRate: .32, needMix: [.5, .35, .15] },
+  { name: 'JW Marriott', full: 'JW Marriott hotel', lon: -83.0530, lat: 42.3254, slots: 12, rate: 1.5, mix: [.35, .35, .3], needRate: .16, needMix: [.3, .4, .3] },
+  { name: 'AlumniFi Field', full: 'AlumniFi Field stadium', lon: -83.0850, lat: 42.3315, slots: 12, rate: 1.2, mix: [.5, .4, .1], needRate: .26, needMix: [.55, .4, .05] },
+  { name: 'Reuse Warehouse', full: 'Architectural Salvage Warehouse', lon: -83.0190, lat: 42.3688, slots: 18, warehouse: true },
+];
+const WH = PL.findIndex(p => p.warehouse);
+const REAL_CLOSURE = { road: 'Michigan Ave', lon0: -83.0845, lon1: -83.0670, real: true };
+const ROADWORK = [
+  { road: 'W. Grand Blvd', lon0: -83.0990, lon1: -83.0870 }, { road: 'Grand River Ave', lon0: -83.0640, lon1: -83.0500 },
+  { road: 'Woodward Ave', lon0: -83.0690, lon1: -83.0560 }, { road: 'Lodge Fwy', lon0: -83.0780, lon1: -83.0640 },
+  { road: 'W. Jefferson Ave', lon0: -83.0700, lon1: -83.0520 }, { road: 'Gratiot Ave', lon0: -83.0450, lon1: -83.0280 },
+];
+
+// ---------- geometry ----------
+const G = buildGraph(ROADS, PL.map(p => toKm(p.lon, p.lat)));
+const KM = pts => pts.map(p => toKm(p[0], p[1]));
+const WATER_KM = KM(SHORE_US.concat(SHORE_CA.slice().reverse())), CANADA_KM = KM(CANADA), BELLE_KM = KM(BELLE_ISLE), CITY_KM = KM(CITY);
+const placeKm = i => toKm(PL[i].lon, PL[i].lat);
+PL.forEach((p, i) => {
+  const [ax, ay] = placeKm(i), an = G.anchorNode[i], best = new Map();
+  for (let n = 0; n < G.N0; n++) { const d = Math.hypot(G.X[n] - ax, G.Y[n] - ay); if (d > 1.2) continue; const r = G.roadOf[n], cur = best.get(r); if (!cur || d < cur[0]) best.set(r, [d, n]); }
+  [...best.values()].sort((x, y) => x[0] - y[0]).slice(0, 3).forEach(([d, n]) => { const w = d * 1.25 + 0.02; G.adj[an].push(n, w); G.adj[n].push(an, w); });
+});
+const pairKey = (a, b) => Math.min(a, b) + '-' + Math.max(a, b);
+const straightKm = (a, b) => { const p = placeKm(a), q = placeKm(b); return Math.hypot(p[0] - q[0], p[1] - q[1]); };
+function closureNodes(c) { const ri = ROADS.findIndex(r => r.n === c.road), x0 = toKm(c.lon0, 0)[0], x1 = toKm(c.lon1, 0)[0], out = []; for (let i = 0; i < G.N0; i++) if (G.roadOf[i] === ri && G.X[i] >= x0 && G.X[i] <= x1) out.push(i); return out; }
+[REAL_CLOSURE].concat(ROADWORK).forEach(c => { c.nodes = closureNodes(c); });
+const closuresNow = () => [REAL_CLOSURE].concat(S && S.roadwork ? [S.roadwork] : []);
+function route(a, b) {
+  const blocked = new Uint8Array(G.N); for (const c of closuresNow()) for (const n of c.nodes) blocked[n] = 1;
+  const r = dijkstra(G.adj, G.N, G.anchorNode[a], blocked), end = G.anchorNode[b];
+  if (!isFinite(r.dist[end])) return null;
+  const nodes = []; let u = end; while (u >= 0) { nodes.push(u); if (u === G.anchorNode[a]) break; u = r.prev[u]; }
+  nodes.reverse(); const flat = new Float32Array(nodes.length * 2);
+  nodes.forEach((n, i) => { flat[2 * i] = G.X[n]; flat[2 * i + 1] = G.Y[n]; });
+  return { flat, km: r.dist[end] };
+}
+function cumOf(f) { if (f._c) return f._c; const n = f.length / 2, c = new Float32Array(n); for (let i = 1; i < n; i++) c[i] = c[i - 1] + Math.hypot(f[2 * i] - f[2 * i - 2], f[2 * i + 1] - f[2 * i - 1]); f._c = c; return c; }
+function pointAt(f, d) { const c = cumOf(f), n = c.length; d = Math.max(0, Math.min(d, c[n - 1])); let i = 1; while (i < n - 1 && c[i] < d) i++; const t = (d - c[i - 1]) / ((c[i] - c[i - 1]) || 1); return [f[2 * i - 2] + (f[2 * i] - f[2 * i - 2]) * t, f[2 * i - 1] + (f[2 * i + 1] - f[2 * i - 1]) * t, i]; }
+
+// ---------- state ----------
+let S = null, rng = Math.random;
+const pickW = w => { let r = rng() * w.reduce((a, b) => a + b, 0); for (let i = 0; i < w.length; i++) { r -= w[i]; if (r <= 0) return i; } return w.length - 1; };
+const poisson = l => { const L = Math.exp(-l); let k = 0, p = 1; do { k++; p *= rng(); } while (p > L); return k - 1; };
+const now = () => performance.now() / 1000;
+const droneOrder = [1, 0, 2, 3, 4, 5];
+
+function newGame() {
+  rng = mulberry32((Math.random() * 4294967295) >>> 0);
+  S = { week: 1, acc: 0, started: false, over: false, paused: false, hold: false,
+    places: PL.map(() => ({ crates: [], need: null })), used: 0, reused: 0, wasted: 0, boughtNew: 0, refused: 0, arrived: 0,
+    lessons: [], lessonSet: new Set(), weekBlocked: new Set(), lastRefuse: 0, drone: { at: 0, next: 1, t0: now(), scanT: 0 }, truck: null, proposal: null,
+    autopilot: false, pick: null, roadwork: null, autoT: 0 };
+  PL.forEach((p, i) => {
+    if (p.warehouse) return;
+    const n = 3 + Math.floor(rng() * 4);
+    for (let k = 0; k < n; k++) S.places[i].crates.push({ m: pickW(p.mix), age: Math.floor(rng() * 2), seen: false });
+    S.arrived += n;
+  });
+  let posted = 0; for (const i of [0, 3, 1, 5]) if (posted < 2 && rng() < 0.75 && postNeed(i)) posted++;
+  if (!posted) postNeed(0);
+  fx = []; $('log').innerHTML = '';
+  $('autopilot').checked = false;
+  say('Hi! I\u2019m the AI dispatcher. The drone is scanning the yards so I can see the hidden crates. Press \u201cAsk the AI\u201d and I\u2019ll tell you where to send them.');
+  setProposal(null); hint('Tap a yard, then tap where its crates should go. Or ask the AI.');
+  $('endcard').hidden = true;
+  render();
+}
+function postNeed(i) { const p = PL[i], st = S.places[i]; if (p.warehouse || st.need) return false; st.need = { m: pickW(p.needMix), q: 2 + Math.floor(rng() * 3), left: NEED_WEEKS }; return true; }
+const saved = () => S.used + S.places[WH].crates.length;
+
+function weekTick() {
+  let trashed = 0;
+  PL.forEach((p, i) => {
+    if (p.warehouse) return; const st = S.places[i];
+    st.crates.forEach(c => c.age++);
+    const out = st.crates.filter(c => c.age >= TRASH_AGE);
+    if (out.length) { st.crates = st.crates.filter(c => c.age < TRASH_AGE); trashed += out.length; S.wasted += out.length; out.forEach((c, k) => toDump(i, c.m, k)); pop(i, out.some(c => !c.seen) ? 'Thrown out unseen!' : 'Thrown out!', 'bad'); }
+    if (st.need) { st.need.left--; if (st.need.left <= 0) { S.boughtNew++; pop(i, 'Had to buy new!', 'bad', 30); st.need = null; } }
+  });
+  const wh = S.places[WH], give = Math.min(3, wh.crates.length);
+  if (give) { wh.crates.splice(0, give); S.used += give; S.reused += give; pop(WH, '+' + give + ' reused by neighbors!', 'good'); }
+  S.week++;
+  if (S.week > WEEKS) { S.week = WEEKS; endGame(); return; }
+  PL.forEach((p, i) => {
+    if (p.warehouse) return; const st = S.places[i], n = poisson(p.rate);
+    for (let k = 0; k < n; k++) { S.arrived++; if (st.crates.length < p.slots) st.crates.push({ m: pickW(p.mix), age: 0, seen: false }); else { S.wasted++; toDump(i, pickW(p.mix), k); } }
+  });
+  PL.forEach((p, i) => { if (!p.warehouse && !S.places[i].need && rng() < p.needRate) postNeed(i); });
+  S.weekBlocked.clear();
+  S.roadwork = rng() < 0.5 ? ROADWORK[Math.floor(rng() * ROADWORK.length)] : null;
+  logLine('sys', 'Week ' + S.week + ': new extra crates arrived, hidden until the drone scans them' + (trashed ? '. ' + trashed + ' old crate' + (trashed === 1 ? ' was' : 's were') + ' thrown out' : '') + (S.roadwork ? '. Road work on ' + S.roadwork.road + ' this week.' : '.'));
+  render();
+}
+function endGame() {
+  S.over = true; S.truck = null; setProposal(null);
+  const total = saved() + S.wasted, pct = total ? saved() / total : 0, stars = pct >= 0.55 ? 3 : pct >= 0.35 ? 2 : pct >= 0.15 ? 1 : 0;
+  $('stars').innerHTML = [0, 1, 2].map(k => '<span class="star' + (k < stars ? ' on' : '') + '">\u2605</span>').join('');
+  $('endtext').textContent = 'You saved ' + saved() + ' crates: ' + (S.used - S.reused) + ' went straight to builders who needed them, ' + S.reused + ' were reused by neighbors from the Reuse Warehouse, and ' + S.places[WH].crates.length + ' are still stored there. ' + S.wasted + ' were thrown out.';
+  $('endnote').textContent = 'Without the drones and the AI dispatcher, nobody would have seen any of the ' + S.arrived + ' extra crates, and every one would have gone to the landfill.';
+  $('endcard').hidden = false; render();
+}
+
+// ---------- moves ----------
+function refuse(kind, where, text, who, mvText, extra) {
+  S.refused++; S.lastRefuse = now();
+  const words = { heavy: 'Too heavy!', far: 'Too far!', notneeded: 'Not needed!', full: 'Full!', blind: 'Can\u2019t see them!', noroad: 'No road!' }[kind];
+  fx.push(Object.assign({ kind, i: where, text: words, t0: now(), dur: 3.4 }, extra || {}));
+  logLine('bad', (who === 'AI' ? 'AI' : 'You') + ': ' + mvText + '. ' + words + ' ' + text);
+  if (who === 'AI') say(aiOops(kind, text)); else hint(words + ' ' + text);
+  render();
+}
+function aiOops(kind, text) {
+  if (kind === 'far') return 'Oops! I measured in a straight line, like on a map, but trucks have to follow the streets. ' + text + ' Lesson learned, I won\u2019t try that trip again.';
+  if (kind === 'notneeded') return 'Oops! ' + text + ' The need changed while the truck was driving.';
+  if (kind === 'noroad') return 'Oops! ' + text + ' I\u2019ll skip that trip until the road work is done.';
+  return 'Oops! ' + text;
+}
+const mvText = (a, b, m, q) => q + ' ' + MATS[m].name + ' from ' + PL[a].name + ' to ' + PL[b].name;
+function attempt(a, b, m, q, who) {
+  if (!S.started || S.over) return;
+  if (S.truck) { (who === 'AI' ? say : hint)('The robot truck is still out. Wait for it to come back!'); return; }
+  const src = S.places[a], t = mvText(a, b, m, q);
+  if (q > CAP) return refuse('heavy', a, 'A robot truck carries ' + CAP + ' crates, and this load was ' + q + '.', who, t, { q, m });
+  const r = route(a, b);
+  if (!r) { if (who === 'AI') S.weekBlocked.add(pairKey(a, b)); return refuse('noroad', a, 'Road work cuts off every street between ' + PL[a].name + ' and ' + PL[b].name + ' this week.', who, t); }
+  const load = [];
+  src.crates.sort((x, y) => x.age - y.age);
+  for (let k = src.crates.length - 1; k >= 0 && load.length < q; k--) if (src.crates[k].m === m && src.crates[k].seen) { load.push(src.crates[k]); src.crates.splice(k, 1); }
+  S.truck = { a, b, m, load, flat: r.flat, km: r.km, stopKm: Math.min(r.km, TIME_KM), t0: now(), who, text: t, done: false };
+  if (who === 'AI') say('Sending ' + t + '. By street it\u2019s ' + r.km.toFixed(1) + ' km. Here we go!'); else hint('Robot truck on its way: ' + t + '.');
+  render();
+}
+function bringBack(tr) { const st = S.places[tr.a], p = PL[tr.a]; for (const c of tr.load) { if (st.crates.length < p.slots) st.crates.push(c); else { S.wasted++; } } }
+function arrive(tr) {
+  const P = PL[tr.b], dst = S.places[tr.b], q = tr.load.length, mName = MATS[tr.m].name;
+  if (tr.km > TIME_KM) {
+    if (tr.who === 'AI') { const key = pairKey(tr.a, tr.b); if (!S.lessonSet.has(key)) { S.lessonSet.add(key); S.lessons.unshift(PL[tr.a].name + ' to ' + PL[tr.b].name + ' is too far by road (' + tr.km.toFixed(1) + ' km).'); } }
+    const q0 = tr.load.length; bringBack(tr); tr.load = [];
+    return refuse('far', null, 'The streets make that trip ' + tr.km.toFixed(1) + ' km, but a delivery has to arrive within ' + TIME_KM + ' km. The crates went back.', tr.who, tr.text, { at: pointAt(tr.flat, tr.stopKm), flat: tr.flat, from: tr.stopKm, m: tr.m, q: q0 });
+  }
+  if (P.warehouse) {
+    const room = P.slots - dst.crates.length, take = Math.min(room, q);
+    for (let k = 0; k < take; k++) { const c = tr.load.shift(); c.age = 0; dst.crates.push(c); }
+    if (take) { fx.push({ kind: 'good', i: tr.b, text: '+' + take + ' saved!', t0: now(), dur: 2.4 }); confetti(tr.b); }
+    if (take === q) { logLine('good', (tr.who === 'AI' ? 'AI' : 'You') + ': ' + tr.text + '. Stored for reuse!'); if (tr.who === 'AI') say('Stored ' + take + ' ' + mName + ' crates at the Reuse Warehouse. They\u2019re safe from the landfill now!'); else hint('Stored ' + take + ' crates. Safe!'); render(); return; }
+    bringBack(tr);
+    return refuse('full', tr.b, 'The Reuse Warehouse had room for ' + take + ', so ' + (q - take) + ' went back.', tr.who, tr.text, { q: q - take, m: tr.m });
+  }
+  if (dst.need && dst.need.m === tr.m) {
+    const use = Math.min(q, dst.need.q); dst.need.q -= use; S.used += use; tr.load.splice(0, use);
+    if (dst.need.q <= 0) dst.need = null;
+    fx.push({ kind: 'good', i: tr.b, text: '+' + use + ' saved!', t0: now(), dur: 2.4 }); confetti(tr.b);
+    if (tr.load.length) { const extra = tr.load.length; bringBack(tr); return refuse('notneeded', tr.b, PL[tr.b].name + ' used ' + use + ' and only needed that many, so ' + extra + ' went back.', tr.who, tr.text); }
+    logLine('good', (tr.who === 'AI' ? 'AI' : 'You') + ': ' + tr.text + '. Delivered to a builder who needed it!');
+    if (tr.who === 'AI') say('Delivered! ' + P.name + ' used ' + use + ' ' + mName + ' crates that would have been thrown away.'); else hint('Delivered! ' + use + ' crates put to use.');
+    render(); return;
+  }
+  bringBack(tr);
+  refuse('notneeded', tr.b, dst.need ? P.name + ' needs ' + MATS[dst.need.m].name + ', not ' + mName + '.' : P.name + ' doesn\u2019t need anything right now.', tr.who, tr.text);
+}
+
+// ---------- the AI dispatcher (built-in hypothesis) ----------
+function aiSuggest() {
+  const seenOf = (i, m) => S.places[i].crates.filter(c => c.seen && c.m === m).length;
+  const cand = [];
+  PL.forEach((t, ti) => {
+    const need = S.places[ti].need; if (!need) return;
+    PL.forEach((s, si) => {
+      if (si === ti) return; const have = seenOf(si, need.m); if (!have) return;
+      if (S.lessonSet.has(pairKey(si, ti)) || S.weekBlocked.has(pairKey(si, ti))) return;
+      const km = straightKm(si, ti); if (km > TIME_KM) return;
+      const q = Math.min(have, need.q, CAP);
+      cand.push({ a: si, b: ti, m: need.m, q, km, kind: 'need', score: q * 10 - km * 2 + (NEED_WEEKS - need.left) * 8 });
+    });
+  });
+  const room = PL[WH].slots - S.places[WH].crates.length;
+  if (room > 0) PL.forEach((s, si) => {
+    if (s.warehouse) return;
+    const old = S.places[si].crates.filter(c => c.seen && c.age >= 2); if (!old.length) return;
+    if (S.lessonSet.has(pairKey(si, WH)) || S.weekBlocked.has(pairKey(si, WH))) return;
+    const counts = [0, 0, 0]; old.forEach(c => counts[c.m]++); const m = counts.indexOf(Math.max(...counts));
+    const km = straightKm(si, WH); if (km > TIME_KM) return;
+    const q = Math.min(counts[m], CAP, room);
+    cand.push({ a: si, b: WH, m, q, km, kind: 'save', score: q * 7 - km * 2 + Math.max(...old.map(c => c.age)) * 4 });
+  });
+  cand.sort((x, y) => y.score - x.score);
+  return cand[0] || null;
+}
+function aiSpeech(sg) {
+  const mName = MATS[sg.m].name;
+  if (sg.kind === 'need') return PL[sg.b].name + ' needs ' + S.places[sg.b].need.q + ' ' + mName + ' crates. I can see ' + (sg.q === S.places[sg.b].need.q ? '' : 'some ') + mName + ' crates sitting at ' + PL[sg.a].name + ', about ' + sg.km.toFixed(1) + ' km away. Send ' + sg.q + '?';
+  return sg.q + ' ' + mName + ' crates at ' + PL[sg.a].name + ' are getting old and will be thrown out soon. Let\u2019s store them at the Reuse Warehouse, about ' + sg.km.toFixed(1) + ' km away!';
+}
+function aiNothing() {
+  const hiddenCount = S.places.reduce((a, st) => a + st.crates.filter(c => !c.seen).length, 0);
+  return hiddenCount ? 'I don\u2019t see a good move yet. ' + hiddenCount + ' crates are still hidden. The drone will scan them soon!' : 'Nothing to move right now. Every yard is under control!';
+}
+function askAI() {
+  if (!S.started || S.over) return;
+  if (S.truck) { say('The robot truck is still out. Ask me again when it\u2019s back!'); return; }
+  const sg = aiSuggest();
+  if (!sg) { say(aiNothing()); return; }
+  setProposal(sg); say(aiSpeech(sg));
+}
+function setProposal(sg) {
+  S && (S.proposal = sg); if (S) S.hold = !!sg && !S.autopilot;
+  $('askbtns').hidden = !!sg; $('gobtns').hidden = !sg; $('mask').hidden = !!sg; $('mgo').hidden = !sg; $('mnope').hidden = !sg;
+  render();
+}
+$('ask').addEventListener('click', askAI);
+function goNow() { const sg = S.proposal; if (!sg) return; setProposal(null); attempt(sg.a, sg.b, sg.m, sg.q, 'AI'); }
+function notNow() { setProposal(null); say('Okay! Ask me again whenever you want.'); }
+$('go').addEventListener('click', goNow); $('nope').addEventListener('click', notNow);
+$('mask').addEventListener('click', askAI); $('mgo').addEventListener('click', goNow); $('mnope').addEventListener('click', notNow);
+$('autopilot').addEventListener('change', e => { S.autopilot = e.target.checked; if (S.autopilot) { setProposal(null); say('Autopilot on! I\u2019ll pick the moves and send the trucks myself. Watch the saved crates add up.'); } else say('Autopilot off. You\u2019re back in charge!'); });
+
+// ---------- player taps ----------
+function tapPlace(i) {
+  if (!S.started || S.over) return;
+  if (S.pick == null) {
+    const st = S.places[i], seen = st.crates.filter(c => c.seen), hid = st.crates.length - seen.length;
+    if (!st.crates.length) { hint(PL[i].name + ' has no extra crates right now.'); return; }
+    S.pick = i;
+    const counts = [0, 1, 2].map(m => seen.filter(c => c.m === m).length).map((n, m) => n ? n + ' ' + MATS[m].name : '').filter(Boolean).join(', ');
+    hint('Picked ' + PL[i].name + (counts ? ': you can see ' + counts : ': all its crates are still hidden') + (hid ? ' (' + hid + ' hidden)' : '') + '. Now tap where to send them.');
+    render(); return;
+  }
+  const a = S.pick; S.pick = null;
+  if (a === i) { hint('Cancelled. Tap a yard to pick it.'); render(); return; }
+  const src = S.places[a], seen = src.crates.filter(c => c.seen), need = S.places[i].need;
+  if (!seen.length) return refuse('blind', a, 'Those crates haven\u2019t been scanned yet, so nobody knows what they are. Wait for the drone!', 'You', 'Crates from ' + PL[a].name + ' to ' + PL[i].name);
+  let m;
+  if (need && seen.some(c => c.m === need.m)) m = need.m;
+  else { const counts = [0, 1, 2].map(mm => seen.filter(c => c.m === mm).length); m = counts.indexOf(Math.max(...counts)); }
+  attempt(a, i, m, seen.filter(c => c.m === m).length, 'You');
+}
+
+// ---------- messages & log ----------
+function say(t) { $('bubble').textContent = t; $('mbubble').textContent = t; }
+function hint(t) { $('hint').textContent = t; }
+function logLine(cls, t) {
+  const li = document.createElement('li'); li.className = cls;
+  li.textContent = (cls === 'sys' ? '' : 'Week ' + S.week + '. ') + t; $('log').prepend(li);
+  while ($('log').children.length > 60) $('log').lastChild.remove();
+}
+function render() {
+  if (!S) return;
+  $('saved').textContent = saved(); $('wasted').textContent = S.wasted; $('refused').textContent = S.refused;
+  $('weeklabel').textContent = 'Week ' + S.week + ' of ' + WEEKS;
+  const bars = $('weekbar'); if (bars.children.length !== WEEKS) { bars.innerHTML = ''; for (let k = 0; k < WEEKS; k++) bars.appendChild(document.createElement('i')); }
+  [...bars.children].forEach((el, k) => el.className = k < S.week - 1 ? 'done' : k === S.week - 1 ? 'now' : '');
+  $('pause').textContent = S.paused ? 'Play' : 'Pause'; $('pause').disabled = !S.started || S.over;
+  $('lessons').innerHTML = S.lessons.length ? S.lessons.slice(0, 4).map(l => '<li>' + l.replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</li>').join('') : '<li class="empty">Nothing yet. Every refused trip teaches the AI something.</li>';
+}
+$('pause').addEventListener('click', () => { S.paused = !S.paused; render(); });
+$('restart').addEventListener('click', () => { newGame(); S.started = true; $('startcard').hidden = true; });
+$('play').addEventListener('click', () => { S.started = true; $('startcard').hidden = true; S.drone.t0 = now(); render(); });
+$('again').addEventListener('click', () => { newGame(); S.started = true; });
+// keyboard alternative
+PL.forEach((p, i) => { for (const id of ['kfrom', 'kto']) { const o = document.createElement('option'); o.value = i; o.textContent = p.name; $(id).appendChild(o); } });
+$('kto').value = WH;
+$('ksend').addEventListener('click', () => { S.pick = null; tapPlace(+$('kfrom').value); tapPlace(+$('kto').value); });
+
+// ---------- drawing ----------
+const cv = $('board'), ctx = cv.getContext('2d'), wrap = $('boardwrap');
+let W = 700, H = 560, DPR = 1, view = { cx: 0, cy: 0, s: 80 }, geo = [], fx = [], parts = [];
+const EXT = [-83.0990, 42.3185, -83.0110, 42.3850];
+function size() {
+  const r = wrap.getBoundingClientRect(); W = Math.max(280, Math.floor(r.width));
+  H = Math.round(Math.min(700, Math.max(420, W * (W < 640 ? 1.25 : 0.74))));
+  DPR = Math.min(2, window.devicePixelRatio || 1); cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR); cv.style.height = H + 'px';
+  const a = toKm(EXT[0], EXT[1]), b = toKm(EXT[2], EXT[3]);
+  view.cx = (a[0] + b[0]) / 2; view.cy = (a[1] + b[1]) / 2 - (W < 640 ? 0 : 0.15); view.s = Math.min(W / (b[0] - a[0]), H / (b[1] - a[1]));
+}
+const SX = x => (x - view.cx) * view.s + W / 2, SY = y => H / 2 - (y - view.cy) * view.s;
+const font = (s, w) => { ctx.font = (w || 400) + ' ' + s + 'px "Lilita One", "Arial Black", Impact, sans-serif'; };
+const ui = (s, w) => { ctx.font = (w || 700) + ' ' + s + 'px Nunito, "Trebuchet MS", Arial, sans-serif'; };
+function poly(pts, close) { ctx.beginPath(); pts.forEach((p, i) => i ? ctx.lineTo(SX(p[0]), SY(p[1])) : ctx.moveTo(SX(p[0]), SY(p[1]))); if (close) ctx.closePath(); }
+function rr(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+function outlined(t, x, y, fill, lw) { ctx.lineJoin = 'round'; ctx.lineWidth = lw || 5; ctx.strokeStyle = C.white; ctx.strokeText(t, x, y); ctx.fillStyle = fill; ctx.fillText(t, x, y); }
+function flatPath(f, from, to) { const c = cumOf(f), n = c.length; ctx.beginPath(); const s = pointAt(f, from); ctx.moveTo(SX(s[0]), SY(s[1])); for (let i = s[2]; i < n; i++) { if (c[i] >= to) break; ctx.lineTo(SX(f[2 * i]), SY(f[2 * i + 1])); } const e = pointAt(f, to); ctx.lineTo(SX(e[0]), SY(e[1])); }
+function crate(x, y, s, m, hidden, warn, t) {
+  const wob = warn ? Math.sin(t * 14 + x) * 1.2 : 0;
+  x += wob;
+  if (hidden) { ctx.fillStyle = C.hidden; rr(x, y, s, s, 2.5); ctx.fill(); ctx.fillStyle = C.white; font(s * 0.78); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('?', x + s / 2, y + s / 2 + 1); }
+  else {
+    const M = MATS[m]; ctx.fillStyle = M.color; rr(x, y, s, s, 2.5); ctx.fill();
+    ctx.fillStyle = M.dark; ctx.fillRect(x + 1, y + s * 0.68, s - 2, s * 0.24);
+    ctx.strokeStyle = M.dark; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + s * 0.2, y + s * 0.2); ctx.lineTo(x + s * 0.8, y + s * 0.62); ctx.stroke();
+  }
+  if (warn) { ctx.strokeStyle = C.bad; ctx.lineWidth = 2; rr(x - 1, y - 1, s + 2, s + 2, 3); ctx.stroke(); }
+}
+function crane(x, y, s) {
+  ctx.strokeStyle = '#E8A317'; ctx.lineWidth = Math.max(1.5, s * 0.12); ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - s * 2.2); ctx.lineTo(x + s * 1.8, y - s * 2.2); ctx.moveTo(x, y - s * 2.2); ctx.lineTo(x - s * 0.6, y - s * 2.2); ctx.stroke();
+  ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + s * 1.5, y - s * 2.2); ctx.lineTo(x + s * 1.5, y - s * 1.4); ctx.stroke();
+}
+function drawTruck(x, y, ang, m, q, frac, tipped) {
+  ctx.save(); ctx.translate(x, y); ctx.rotate(ang + (tipped || 0));
+  if (frac != null) { ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(0, 0, 19, 0, 7); ctx.stroke();
+    ctx.strokeStyle = frac > 0.85 ? C.bad : C.good; ctx.beginPath(); ctx.arc(0, 0, 19, -Math.PI / 2, -Math.PI / 2 + Math.min(1, frac) * Math.PI * 2); ctx.stroke(); }
+  ctx.fillStyle = 'rgba(0,0,0,.18)'; rr(-13, -6, 28, 14, 3); ctx.fill();
+  ctx.fillStyle = C.truck; rr(-14, -8, 20, 15, 3); ctx.fill();
+  ctx.fillStyle = C.truckDark; rr(6, -7, 9, 13, 3); ctx.fill();
+  ctx.fillStyle = '#BFE6FF'; ctx.fillRect(10, -5, 4, 9);
+  const n = Math.min(q, 9);
+  for (let k = 0; k < n; k++) { const cx = -12 + (k % 3) * 6, cy = -6 + Math.floor(k / 3) * 5 - (k >= 6 ? 12 : 0); ctx.fillStyle = MATS[m].color; ctx.fillRect(cx, cy, 5, 4.5); ctx.strokeStyle = k >= CAP ? C.bad : MATS[m].dark; ctx.lineWidth = k >= CAP ? 1.5 : .8; ctx.strokeRect(cx, cy, 5, 4.5); }
+  ctx.restore();
+}
+function drawDrone(x, y, t, scanning) {
+  if (scanning) { ctx.fillStyle = 'rgba(123,97,255,.18)'; ctx.beginPath(); ctx.moveTo(x, y + 4); ctx.lineTo(x - 26, y + 40); ctx.lineTo(x + 26, y + 40); ctx.closePath(); ctx.fill(); }
+  ctx.fillStyle = 'rgba(0,0,0,.15)'; ctx.beginPath(); ctx.ellipse(x + 6, y + 16, 12, 4, 0, 0, 7); ctx.fill();
+  ctx.strokeStyle = C.drone; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(x - 9, y - 9); ctx.lineTo(x + 9, y + 9); ctx.moveTo(x + 9, y - 9); ctx.lineTo(x - 9, y + 9); ctx.stroke();
+  for (const [dx, dy] of [[-9, -9], [9, -9], [-9, 9], [9, 9]]) { ctx.strokeStyle = 'rgba(123,97,255,.55)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x + dx, y + dy, 5.5, t * 20, t * 20 + 2.2); ctx.stroke(); ctx.beginPath(); ctx.arc(x + dx, y + dy, 5.5, t * 20 + Math.PI, t * 20 + Math.PI + 2.2); ctx.stroke(); }
+  ctx.fillStyle = C.drone; rr(x - 5.5, y - 5.5, 11, 11, 3); ctx.fill(); ctx.fillStyle = C.white; ctx.beginPath(); ctx.arc(x, y, 2.2, 0, 7); ctx.fill();
+}
+function drawCone(x, y, s) { ctx.fillStyle = C.cone; ctx.beginPath(); ctx.moveTo(x, y - s); ctx.lineTo(x + s * 0.55, y + s * 0.4); ctx.lineTo(x - s * 0.55, y + s * 0.4); ctx.closePath(); ctx.fill(); ctx.fillStyle = C.white; ctx.fillRect(x - s * 0.3, y - s * 0.25, s * 0.6, s * 0.18); ctx.fillStyle = '#C45A00'; ctx.fillRect(x - s * 0.7, y + s * 0.4, s * 1.4, s * 0.2); }
+function dumpXY() { return [W - 58, H - 44]; }
+function toDump(i, m, k) { fx.push({ kind: 'trash', i, m, t0: now() + k * 0.12, dur: 1.2 }); }
+function pop(i, text, kind, dy) { fx.push({ kind: kind === 'bad' ? 'popbad' : 'popgood', i, text, dy: dy || 0, t0: now(), dur: 2.6 }); }
+function confetti(i) { const g = geo[i]; if (!g) return; for (let k = 0; k < 18; k++) parts.push({ x: g.cx, y: g.ly, vx: (Math.random() - 0.5) * 160, vy: -Math.random() * 160 - 40, c: [C.good, '#FFD670', C.drone, '#5BC0EB', C.truck][k % 5], t0: now(), life: 1.1 }); }
+
+function draw(t) {
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.fillStyle = C.land; ctx.fillRect(0, 0, W, H);
+  poly(CANADA_KM, true); ctx.fillStyle = C.canada; ctx.fill();
+  poly(WATER_KM, true); ctx.fillStyle = C.water; ctx.fill();
+  ctx.save(); poly(WATER_KM, true); ctx.clip(); ctx.strokeStyle = C.wave; ctx.lineWidth = 2;
+  for (let k = 0; k < 40; k++) { const x = ((k * 97) % W) + Math.sin(t + k) * 6, y = ((k * 53) % H); ctx.beginPath(); ctx.arc(x, y, 6, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke(); }
+  ctx.restore();
+  poly(CITY_KM, true); ctx.fillStyle = C.city; ctx.fill();
+  poly(BELLE_KM, true); ctx.fillStyle = C.park; ctx.fill();
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  const rw = Math.max(3, view.s * 0.05);
+  for (const r of G.roadsKm) if (r.k === 'art') { poly(r.km); ctx.strokeStyle = C.roadEdge; ctx.lineWidth = rw + 2.5; ctx.stroke(); }
+  for (const r of G.roadsKm) if (r.k === 'art') { poly(r.km); ctx.strokeStyle = C.road; ctx.lineWidth = rw; ctx.stroke(); }
+  for (const r of G.roadsKm) if (r.k === 'fwy') { poly(r.km); ctx.strokeStyle = C.fwyEdge; ctx.lineWidth = rw * 1.3 + 2.5; ctx.stroke(); ctx.strokeStyle = C.fwy; ctx.lineWidth = rw * 1.3; ctx.stroke(); }
+  font(15); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  { const p = toKm(-83.0350, 42.3222); ctx.save(); ctx.translate(SX(p[0]), SY(p[1])); ctx.rotate(-0.42); outlined('Detroit River', 0, 0, '#1B6FA0', 4); ctx.restore(); }
+  if (W >= 640) { const p = toKm(-83.0300, 42.3155); ui(12, 800); outlined('Canada', SX(p[0]), SY(p[1]), '#4F7A34', 4); }
+  // closures: barrier stripes and cones
+  for (const c of closuresNow()) {
+    if (c.nodes.length < 2) continue;
+    ctx.beginPath(); c.nodes.forEach((n, i) => { const x = SX(G.X[n]), y = SY(G.Y[n]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+    ctx.strokeStyle = C.white; ctx.lineWidth = rw + 4; ctx.stroke(); ctx.strokeStyle = C.cone; ctx.setLineDash([7, 6]); ctx.stroke(); ctx.setLineDash([]);
+    for (const n of [c.nodes[0], c.nodes[c.nodes.length - 1]]) drawCone(SX(G.X[n]), SY(G.Y[n]) - 2, 9);
+    const mid = c.nodes[Math.floor(c.nodes.length / 2)]; ui(11, 900); ctx.textAlign = 'center'; outlined('Road closed', SX(G.X[mid]), SY(G.Y[mid]) + 16, C.cone, 4);
+  }
+  // landfill
+  { const [dx, dy] = dumpXY(); ctx.fillStyle = C.dump; ctx.beginPath(); ctx.ellipse(dx, dy + 14, 42, 16, 0, Math.PI, 0); ctx.fill();
+    ctx.fillStyle = '#6E727B'; for (let k = 0; k < Math.min(14, Math.ceil(S.wasted / 3)); k++) ctx.fillRect(dx - 30 + (k * 13) % 56, dy + 2 - Math.floor(k / 5) * 6, 8, 6);
+    ui(11, 900); ctx.textAlign = 'center'; outlined('Landfill: ' + S.wasted, dx, dy + 26, C.bad, 4); }
+  // yards
+  const cell = Math.max(9, Math.min(15, view.s * 0.16)), gap = 2;
+  geo = [];
+  PL.forEach((p, i) => {
+    const st = S.places[i], [kx, ky] = placeKm(i), cx = SX(kx), cy = SY(ky);
+    const cols = p.warehouse ? 6 : 4, rows = Math.ceil(p.slots / cols), lw = cols * (cell + gap) + 8, lh = rows * (cell + gap) + 8;
+    const lx = Math.max(6, Math.min(W - lw - 6, cx - lw / 2)), ly = Math.max(30, Math.min(H - lh - 6, cy - lh / 2));
+    geo[i] = { cx: lx + lw / 2, cy: ly + lh / 2, lx, ly, lw, lh };
+    const picked = S.pick === i, prop = S.proposal && (S.proposal.a === i || S.proposal.b === i);
+    if (picked || prop) { ctx.strokeStyle = picked ? '#FFB703' : C.drone; ctx.lineWidth = 4; ctx.setLineDash([6, 4]); rr(lx - 5, ly - 5, lw + 10, lh + 10, 10); ctx.stroke(); ctx.setLineDash([]); }
+    ctx.fillStyle = 'rgba(0,0,0,.12)'; rr(lx + 3, ly + 4, lw, lh, 8); ctx.fill();
+    if (p.warehouse) {
+      ctx.fillStyle = C.ware; rr(lx, ly, lw, lh, 8); ctx.fill(); ctx.fillStyle = '#E9FBF8'; rr(lx + 3, ly + 3, lw - 6, lh - 6, 6); ctx.fill();
+      ctx.fillStyle = C.ware; ctx.beginPath(); ctx.moveTo(lx - 4, ly + 2); ctx.lineTo(lx + lw / 2, ly - 14); ctx.lineTo(lx + lw + 4, ly + 2); ctx.closePath(); ctx.fill();
+    } else { ctx.fillStyle = C.lot; rr(lx, ly, lw, lh, 8); ctx.fill(); ctx.strokeStyle = C.lotEdge; ctx.lineWidth = 2; ctx.stroke(); crane(lx + lw - 6, ly + 2, cell * 0.5); }
+    for (let k = 0; k < p.slots; k++) {
+      const x = lx + 4 + (k % cols) * (cell + gap), y = ly + 4 + Math.floor(k / cols) * (cell + gap), c = st.crates[k];
+      if (c) crate(x, y, cell, c.m, !c.seen && !p.warehouse, !p.warehouse && c.age >= TRASH_AGE - 1, t);
+      else { ctx.strokeStyle = p.warehouse ? 'rgba(28,156,141,.35)' : 'rgba(120,85,30,.3)'; ctx.lineWidth = 1; rr(x + 0.5, y + 0.5, cell - 1, cell - 1, 2); ctx.stroke(); }
+    }
+    // name sign
+    ui(W < 640 ? 11 : 12.5, 900); const tw = ctx.measureText(p.name).width + 14, sx = Math.max(4, Math.min(W - tw - 4, lx + lw / 2 - tw / 2)), sy = ly - (p.warehouse ? 34 : 24);
+    ctx.fillStyle = p.warehouse ? C.ware : C.ink; rr(sx, sy, tw, 19, 9); ctx.fill(); ctx.fillStyle = C.white; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(p.name, sx + 7, sy + 10);
+    // need bubble
+    if (st.need) {
+      const n = st.need, txt = 'Needs ' + n.q; ui(W < 640 ? 11 : 12.5, 900);
+      const bw = ctx.measureText(txt).width + cell + 26, bh = 22 + 8;
+      let bx = lx + lw + 10; if (bx + bw > W - 4) bx = lx - bw - 10;
+      const by = ly + lh / 2 - bh / 2;
+      ctx.fillStyle = n.left <= 1 ? '#FFE3E5' : C.white; ctx.strokeStyle = n.left <= 1 ? C.bad : C.ink; ctx.lineWidth = 2;
+      rr(bx, by, bw, bh, 8); ctx.fill(); ctx.stroke();
+      const px = bx > lx ? bx : bx + bw; ctx.fillStyle = n.left <= 1 ? '#FFE3E5' : C.white; ctx.beginPath(); ctx.moveTo(px, by + bh / 2 - 5); ctx.lineTo(px + (bx > lx ? -8 : 8), by + bh / 2); ctx.lineTo(px, by + bh / 2 + 5); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = C.ink; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(txt, bx + 8, by + 11);
+      crate(bx + bw - cell - 8, by + 4, cell * 0.9, n.m, false, false, t);
+      for (let k = 0; k < NEED_WEEKS; k++) { ctx.fillStyle = k < n.left ? (n.left <= 1 ? C.bad : C.ink) : 'rgba(0,0,0,.15)'; ctx.beginPath(); ctx.arc(bx + 12 + k * 9, by + bh - 6, 3, 0, 7); ctx.fill(); }
+    }
+  });
+  // proposal line: the AI's straight-line guess
+  if (S.proposal) {
+    const A = geo[S.proposal.a], B = geo[S.proposal.b];
+    ctx.strokeStyle = C.drone; ctx.lineWidth = 3; ctx.setLineDash([8, 6]); ctx.lineDashOffset = -t * 30;
+    ctx.beginPath(); ctx.moveTo(A.cx, A.cy); ctx.lineTo(B.cx, B.cy); ctx.stroke(); ctx.setLineDash([]); ctx.lineDashOffset = 0;
+    const ang = Math.atan2(B.cy - A.cy, B.cx - A.cx), ex = B.cx - Math.cos(ang) * (B.lw / 2 + 6), ey = B.cy - Math.sin(ang) * (B.lh / 2 + 6);
+    ctx.fillStyle = C.drone; ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(ex - Math.cos(ang) * 14 - Math.sin(ang) * 7, ey - Math.sin(ang) * 14 + Math.cos(ang) * 7); ctx.lineTo(ex - Math.cos(ang) * 14 + Math.sin(ang) * 7, ey - Math.sin(ang) * 14 - Math.cos(ang) * 7); ctx.fill();
+    ui(12, 900); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; outlined('AI\u2019s guess: ' + S.proposal.km.toFixed(1) + ' km', (A.cx + B.cx) / 2, (A.cy + B.cy) / 2 - 12, C.drone, 4);
+  }
+  // truck
+  if (S.truck) {
+    const tr = S.truck, d = Math.min(tr.stopKm, (t - tr.t0) * TRUCK_KMPS);
+    ctx.strokeStyle = C.truck; ctx.lineWidth = 4; ctx.globalAlpha = 0.3; flatPath(tr.flat, 0, tr.km); ctx.stroke(); ctx.globalAlpha = 1; ctx.lineWidth = 5; flatPath(tr.flat, 0, d); ctx.stroke();
+    const p = pointAt(tr.flat, d), p2 = pointAt(tr.flat, Math.min(d + 0.05, tr.km)), ang = Math.atan2(-(p2[1] - p[1]), p2[0] - p[0]);
+    drawTruck(SX(p[0]), SY(p[1]), isFinite(ang) ? ang : 0, tr.m, tr.load.length, d / TIME_KM);
+    if (d >= tr.stopKm && !tr.done && S.started) { tr.done = true; setTimeout(() => { if (S.truck === tr) { S.truck = null; arrive(tr); } }, 300); }
+  }
+  // drone
+  if (S.started && !S.over) {
+    const dr = S.drone, a = droneOrder[dr.at], b = droneOrder[dr.next], A = geo[a], B = geo[b];
+    const u = Math.min(1, (t - dr.t0) / HOP_SEC), e = u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2;
+    const x = A.cx + (B.cx - A.cx) * e, y = (A.ly - 30) + ((B.ly - 30) - (A.ly - 30)) * e + Math.sin(t * 5) * 2;
+    drawDrone(x, y, t, u >= 1);
+  }
+  // effects
+  fx = fx.filter(f => t < f.t0 + f.dur);
+  for (const f of fx) {
+    if (t < f.t0) continue;
+    const u = (t - f.t0) / f.dur, g = f.i != null ? geo[f.i] : null, alpha = Math.min(1, (1 - u) * 3);
+    ctx.globalAlpha = alpha;
+    if (f.kind === 'trash' && g) {
+      const [dx, dy] = dumpXY(), x = g.cx + (dx - g.cx) * u, y = g.cy + (dy - g.cy) * u - Math.sin(u * Math.PI) * 60;
+      ctx.save(); ctx.translate(x, y); ctx.rotate(u * 8); crate(-6, -6, 12, f.m, false, false, t); ctx.restore();
+    } else if (f.kind === 'popgood' || f.kind === 'popbad' || f.kind === 'good') {
+      const bad = f.kind === 'popbad', sc = Math.min(1, u * 8);
+      font(bad ? 15 : 20); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      const py = bad ? g.ly + g.lh + 14 + f.dy * 0.6 + u * 10 : Math.max(20, g.ly - 44 - f.dy - u * 18);
+      ctx.save(); ctx.translate(Math.max(70, Math.min(W - 70, g.cx)), Math.min(H - 12, py)); ctx.scale(sc, sc); outlined(f.text, 0, 0, bad ? C.bad : C.good, 5); ctx.restore();
+    } else {
+      // refusals, drawn where they happened
+      let x, y;
+      if (f.kind === 'far') { x = SX(f.at[0]); y = SY(f.at[1]);
+        ctx.strokeStyle = C.truck; ctx.lineWidth = 5; flatPath(f.flat, 0, f.from); ctx.stroke();
+        drawTruck(x - 24, y + 4, 0, f.m != null ? f.m : 0, f.q || 0, null);
+        ctx.strokeStyle = C.ink; ctx.lineWidth = 4; ctx.setLineDash([4, 6]); flatPath(f.flat, f.from, cumOf(f.flat)[cumOf(f.flat).length - 1]); ctx.stroke(); ctx.setLineDash([]);
+        ctx.fillStyle = C.white; ctx.strokeStyle = C.bad; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x, y, 16, 0, 7); ctx.fill(); ctx.stroke();
+        ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - 10); ctx.moveTo(x, y); ctx.lineTo(x + 7, y + 3); ctx.stroke(); y -= 26;
+      } else if (f.kind === 'heavy') { x = g.cx; y = g.cy; drawTruck(x + g.lw / 2 + 22, y + 12, 0, f.m, f.q, null, -0.35 * Math.min(1, u * 4) + Math.sin(t * 30) * 0.03 * (1 - u)); y = g.ly - 44; }
+      else if (f.kind === 'notneeded' || f.kind === 'noroad') { x = g.cx; y = g.cy; ctx.strokeStyle = C.bad; ctx.lineWidth = 7; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(x - 16, y - 16); ctx.lineTo(x + 16, y + 16); ctx.moveTo(x + 16, y - 16); ctx.lineTo(x - 16, y + 16); ctx.stroke(); y = g.ly - 44; }
+      else if (f.kind === 'full') { x = g.cx; y = g.cy; for (let k = 0; k < f.q; k++) crate(g.lx + g.lw + 6 + (k % 3) * 13, g.ly + g.lh - 12 - Math.floor(k / 3) * 13 - Math.abs(Math.sin(t * 8 + k)) * 6, 11, f.m, false, true, t); y = g.ly - 50; }
+      else if (f.kind === 'blind') { x = g.cx; y = g.cy; ctx.fillStyle = 'rgba(107,114,128,.85)'; for (let k = 0; k < 5; k++) { ctx.beginPath(); ctx.arc(x - 24 + k * 12, y + Math.sin(t * 6 + k) * 3, 12, 0, 7); ctx.fill(); } font(24); ctx.fillStyle = C.white; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('?', x, y + 1); y = g.ly - 44; }
+      const sc = Math.min(1, u * 10); font(W < 640 ? 21 : 26); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.save(); ctx.translate(Math.max(80, Math.min(W - 80, x)), Math.max(24, Math.min(H - 20, y - u * 10))); ctx.scale(sc, sc); outlined(f.text, 0, 0, C.bad, 7); ctx.restore();
+    }
+    ctx.globalAlpha = 1;
+  }
+  parts = parts.filter(p => t < p.t0 + p.life);
+  for (const p of parts) { const u = t - p.t0; ctx.fillStyle = p.c; ctx.globalAlpha = 1 - u / p.life; ctx.fillRect(p.x + p.vx * u, p.y + p.vy * u + 220 * u * u, 5, 5); }
+  ctx.globalAlpha = 1;
+}
+
+// ---------- input ----------
+cv.addEventListener('pointerup', e => {
+  const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+  const i = geo.findIndex(g => g && x >= g.lx - 8 && x <= g.lx + g.lw + 8 && y >= g.ly - 30 && y <= g.ly + g.lh + 8);
+  if (i >= 0) tapPlace(i); else if (S.pick != null) { S.pick = null; hint('Cancelled. Tap a yard to pick it.'); render(); }
+});
+
+// ---------- loop ----------
+let lastT = 0;
+function frame(ms) {
+  const t = ms / 1000, dt = lastT ? Math.min(0.2, t - lastT) : 0; lastT = t;
+  if (S.started && !S.over && !S.paused) {
+    if (!S.hold) { S.acc += dt; if (S.acc >= WEEK_SEC) { S.acc -= WEEK_SEC; weekTick(); } }
+    const dr = S.drone; if (t - dr.t0 >= HOP_SEC + 0.7) { const i = droneOrder[dr.next]; S.places[i].crates.forEach(c => c.seen = true); fx.push({ kind: 'popgood', i, text: 'Scanned!', dy: -6, t0: t, dur: 1.2 }); dr.at = dr.next; dr.next = (dr.next + 1) % droneOrder.length; dr.t0 = t; }
+    if (S.autopilot && !S.truck && !S.proposal && t - S.lastRefuse > 2.5) { S.autoT += dt; if (S.autoT > 1.0) { S.autoT = 0; const sg = aiSuggest(); if (sg) { say(aiSpeech(sg)); attempt(sg.a, sg.b, sg.m, sg.q, 'AI'); } } }
+    $('clockfill').style.width = Math.min(100, S.acc / WEEK_SEC * 100) + '%';
+  }
+  draw(t); requestAnimationFrame(frame);
+}
+size(); newGame();
+new ResizeObserver(size).observe(wrap);
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
